@@ -1,26 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=Fredoka:wght@300..700&display=swap');
+
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Font Families */
+  --font-display: "Fredoka", sans-serif;
+  --font-basic: "Figtree", sans-serif;
+
+  /* Font Colors */
+  --font-color-base: oklch(0 0 0); /* #000000 */
+  --font-color-dark: oklch(1 0 0); /* #FFFFFF */
+
+  /* Primary Colors - Deep Purple */
+  --color-primary-50: oklch(83.9% 0.11 313.61deg);
+	--color-primary-100: oklch(77% 0.13 306.77deg);
+	--color-primary-200: oklch(69.89% 0.15 301.19deg);
+	--color-primary-300: oklch(62.95% 0.17 295.31deg);
+	--color-primary-400: oklch(56.01% 0.2 290.37deg);
+	--color-primary-500: oklch(49.52% 0.21 284.78deg);
+	--color-primary-600: oklch(43.94% 0.2 282.26deg);
+	--color-primary-700: oklch(38.49% 0.19 279.43deg);
+	--color-primary-800: oklch(32.65% 0.17 275.61deg);
+	--color-primary-900: oklch(27.12% 0.16 271.05deg);
+	--color-primary-950: oklch(21.13% 0.15 264.05deg);
+
+  /* Secondary Colors - Bright Teal */
+  --color-secondary-50: oklch(95.91% 0.06 196.15deg);
+	--color-secondary-100: oklch(91.24% 0.08 192.84deg);
+	--color-secondary-200: oklch(86.74% 0.09 191.26deg);
+	--color-secondary-300: oklch(82.53% 0.11 188.46deg);
+	--color-secondary-400: oklch(78.32% 0.11 187.28deg);
+	--color-secondary-500: oklch(74.23% 0.12 185.35deg);
+	--color-secondary-600: oklch(67.31% 0.11 184.95deg);
+	--color-secondary-700: oklch(60.5% 0.1 184.5deg);
+	--color-secondary-800: oklch(53.18% 0.09 183.86deg);
+	--color-secondary-900: oklch(45.94% 0.08 183.03deg);
+	--color-secondary-950: oklch(38.03% 0.07 181.8deg);
+
+  /* Tertiary Colors - Electric Citrine */
+  --color-tertiary-50: oklch(97.96% 0.12 108.35deg);
+	--color-tertiary-100: oklch(95.69% 0.14 104.76deg);
+	--color-tertiary-200: oklch(93.32% 0.16 101.53deg);
+	--color-tertiary-300: oklch(91.26% 0.17 98.99deg);
+	--color-tertiary-400: oklch(89.13% 0.18 95.69deg);
+	--color-tertiary-500: oklch(87.3% 0.18 92.22deg);
+	--color-tertiary-600: oklch(80.08% 0.16 91.86deg);
+	--color-tertiary-700: oklch(72.68% 0.15 91.4deg);
+	--color-tertiary-800: oklch(64.89% 0.13 90.14deg);
+	--color-tertiary-900: oklch(57.07% 0.12 89.21deg);
+	--color-tertiary-950: oklch(48.97% 0.1 87.9deg);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  body {
+    font-family: var(--font-basic);
+    color: var(--font-color-base);
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body {
+      color: var(--font-color-dark);
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom Utilities */
+@layer utilities {
+  .rounded-base {
+    border-radius: 4px;
+  }
+  .border-base {
+    border-width: 1px;
+  }
 }
