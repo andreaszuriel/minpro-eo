@@ -20,7 +20,7 @@ export class AuthService {
       throw new Error("User already exists");
     }
 
-    // Hash the password using bcrypt
+    
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Generate a new referral code for the user
@@ -71,14 +71,14 @@ export class AuthService {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new Error("Invalid credentials");
 
-    const isMatch = await bcrypt.compare(password, user.password); // Verifying password
+    const isMatch = await bcrypt.compare(password, user.password); 
     if (!isMatch) throw new Error("Invalid credentials");
 
     // Generate token
     const token = JwtUtils.generateToken({
       id: user.id,
       email: user.email,
-      role: user.role as "customer" | "organizer"  // Ensure role is correctly typed
+      role: user.role as "customer" | "organizer"  
     });
 
     return {
@@ -86,7 +86,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        role: user.role as "customer" | "organizer"  // Ensure role is correctly typed
+        role: user.role as "customer" | "organizer"  
       }
     };
   }

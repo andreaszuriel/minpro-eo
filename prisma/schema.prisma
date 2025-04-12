@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -34,19 +32,19 @@ model User {
 
 model Event {
   id            Int      @id @default(autoincrement())
-  title         String   // Event title
-  genre         String   // Genre or category
-  startDate     DateTime // Event start date
-  endDate       DateTime // Event end date
-  location      String   // Venue or location
-  seats         Int      // Total available seats
-  tiers         Json     // Ticket tiers, e.g., [{ "type": "Regular", "price": 100000, "available": 200 }, { "type": "VIP", "price": 250000, "available": 50 }]
-  price         Int      // Base price or lowest ticket price
-  image         String?  // Cover image URL
-  description   String?  // Detailed description
+  title         String   
+  genre         String   
+  startDate     DateTime 
+  endDate       DateTime 
+  location      String   
+  seats         Int      
+  tiers         Json     
+  price         Int      
+  image         String?  
+  description   String?  
   organizerId   Int
   organizer     User     @relation("OrganizerEvents", fields: [organizerId], references: [id])
-  averageRating Float?   // Computed average rating from reviews
+  averageRating Float?   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   reviews       Review[]
@@ -58,9 +56,9 @@ model Transaction {
   userId         Int
   eventId        Int
   ticketQuantity Int
-  finalPrice     Int       // Price after applying discounts & points
-  status         String    // e.g., "waiting for payment", "waiting for admin confirmation", "done", "rejected", "expired", "canceled"
-  paymentProof   String?   // Cloudinary URL for payment proof image
+  finalPrice     Int       
+  status         String    
+  paymentProof   String?   
   createdAt      DateTime  @default(now())
   
   user           User      @relation(fields: [userId], references: [id])
@@ -83,7 +81,7 @@ model Coupon {
   id         Int      @id @default(autoincrement())
   code       String   @unique
   userId     Int
-  discount   Int      // e.g., 20000 IDR discount
+  discount   Int      
   expiresAt  DateTime
   createdAt  DateTime @default(now())
 

@@ -14,7 +14,7 @@ export class AuthRouter {
   }
 
   private routes(): void {
-    // Define the schemas here
+    // Define the schemas for validation
     const registerSchema = z.object({
       name: z.string().min(2),
       email: z.string().email(),
@@ -28,7 +28,7 @@ export class AuthRouter {
       password: z.string().min(6),
     });
 
-    // Use validation middleware for each route
+    // Register User
     this.router.post('/register', ValidationMiddleware.validate({ body: registerSchema }), this.authController.register.bind(this.authController));
     this.router.post('/login', ValidationMiddleware.validate({ body: loginSchema }), this.authController.login.bind(this.authController));
   }
