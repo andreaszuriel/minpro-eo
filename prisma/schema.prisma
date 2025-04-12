@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  password     String
+  role         String    // "customer" or "organizer"
+  referralCode String    @unique
+  referredBy   String?   // referral code used to register
+  points       Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  events       Event[]   @relation("OrganizerEvents")
+  transactions Transaction[]
+  reviews      Review[]
+  coupons      Coupon[]
+}
+
+model Event {
+  id            Int      @id @default(autoincrement())
+  title         String   // Event title
+  genre         String   // Genre or category
+  startDate     DateTime // Event start date
+  endDate       DateTime // Event end date
+  location      String   // Venue or location
+  seats         Int      // Total available seats
+  tiers         Json     // Ticket tiers, e.g., [{ "type": "Regular", "price": 100000, "available": 200 }, { "type": "VIP", "price": 250000, "available": 50 }]
+  price         Int      // Base price or lowest ticket price
+  image         String?  // Cover image URL
+  description   String?  // Detailed description
+  organizerId   Int
+  organizer     User     @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  averageRating Float?   // Computed average rating from reviews
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  reviews       Review[]
+  transactions  Transaction[]
+}
+
+model Transaction {
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  eventId        Int
+  ticketQuantity Int
+  finalPrice     Int       // Price after applying discounts & points
+  status         String    // e.g., "waiting for payment", "waiting for admin confirmation", "done", "rejected", "expired", "canceled"
+  paymentProof   String?   // Cloudinary URL for payment proof image
+  createdAt      DateTime  @default(now())
+  
+  user           User      @relation(fields: [userId], references: [id])
+  event          Event     @relation(fields: [eventId], references: [id])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  eventId   Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+}
+
+model Coupon {
+  id         Int      @id @default(autoincrement())
+  code       String   @unique
+  userId     Int
+  discount   Int      // e.g., 20000 IDR discount
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+}
