@@ -1,5 +1,3 @@
-// models/interface.ts
-
 export interface RegisterInput {
     name: string;
     email: string;

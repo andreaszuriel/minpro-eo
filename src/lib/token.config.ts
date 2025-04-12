@@ -1,5 +1,3 @@
-// lib/token.config.ts
-
 import jwt from 'jsonwebtoken';
 
 export class JwtUtils {
