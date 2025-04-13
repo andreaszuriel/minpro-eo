@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { concertList, ConcertEvent } from '@/components/data/concertlist';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
+import { formatCurrency } from '@/lib/utils';
 
 export default function ConcertListSection() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -20,77 +21,74 @@ export default function ConcertListSection() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentConcerts = concertList.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Change page
-  const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-      // Scroll to the section instead of the top of the page
-      if (sectionRef.current) {
-        sectionRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  };
-
-  const goToPrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-      // Scroll to the section instead of the top of the page
-      if (sectionRef.current) {
-        sectionRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
+  // Change page and scroll to section
+  const changePage = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   return (
-    <section ref={sectionRef} className="py-16 px-4 md:px-8 lg:px-12 bg-slate-200 dark:bg-slate-200">
+    <section 
+      ref={sectionRef} 
+      className="bg-slate-200 py-16 px-4 md:px-8 lg:px-12" 
+      aria-labelledby="upcoming-events-heading"
+    >
       <div className="container mx-auto">
-        <h2 className="text-4xl md:text-5xl font-display font-bold text-center mb-12 text-primary-600 dark:text-primary-400">
+        <h2 
+          id="upcoming-events-heading" 
+          className="mb-12 text-center text-4xl font-bold text-primary-600 md:text-5xl"
+        >
           UPCOMING EVENTS
         </h2>
         
         {/* Concert Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {currentConcerts.map((concert) => (
             <ConcertCard key={concert.id} concert={concert} />
           ))}
         </div>
         
         {/* Pagination */}
-        <div className="flex justify-center items-center mt-16">
+        <nav 
+          className="mt-16 flex items-center justify-center" 
+          aria-label="Pagination"
+        >
           <Button
-            onClick={goToPrevPage}
+            onClick={() => changePage(currentPage - 1)}
             disabled={currentPage === 1}
             variant="outline"
             size="icon"
-            className={`mr-4 border-primary-400 hover:bg-primary-100 focus:ring-primary-400 ${
+            className={`mr-4 border-primary-400 focus:ring-primary-400 ${
               currentPage === 1 
-                ? 'text-gray-400 border-gray-300 cursor-not-allowed hover:bg-transparent' 
-                : 'text-primary-600 hover:text-primary-700'
+                ? 'cursor-not-allowed border-gray-300 text-gray-400 hover:bg-transparent' 
+                : 'text-primary-600 hover:bg-primary-100 hover:text-primary-700'
             }`}
             aria-label="Previous page"
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
           
-          <span className="text-lg font-medium mx-4 text-primary-700 dark:text-primary-400">
+          <span className="mx-4 text-lg font-medium text-primary-700">
             Page {currentPage} of {totalPages}
           </span>
           
           <Button
-            onClick={goToNextPage}
+            onClick={() => changePage(currentPage + 1)}
             disabled={currentPage === totalPages}
             variant="outline"
             size="icon"
-            className={`ml-4 border-primary-400 hover:bg-primary-100 focus:ring-primary-400 ${
+            className={`ml-4 border-primary-400 focus:ring-primary-400 ${
               currentPage === totalPages 
-                ? 'text-gray-400 border-gray-300 cursor-not-allowed hover:bg-transparent' 
-                : 'text-primary-600 hover:text-primary-700'
+                ? 'cursor-not-allowed border-gray-300 text-gray-400 hover:bg-transparent' 
+                : 'text-primary-600 hover:bg-primary-100 hover:text-primary-700'
             }`}
             aria-label="Next page"
           >
             <ChevronRight className="h-5 w-5" />
           </Button>
-        </div>
+        </nav>
       </div>
     </section>
   );
@@ -98,27 +96,10 @@ export default function ConcertListSection() {
 
 // Concert Card Component
 function ConcertCard({ concert }: { concert: ConcertEvent }) {
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    if (concert.currency === "IDR") {
-      return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(amount);
-    }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: concert.currency,
-    }).format(amount);
-  };
-
-  // Split genres and limit to showing max 3
+  // Split genres and limit to showing max 2
   const genres = concert.genre.split('/').map(genre => genre.trim());
   const displayGenres = genres.slice(0, 2);
-  // const hasMoreGenres = genres.length > 2;
-
+  
   // Get the lowest price from all tiers
   const lowestPrice = Math.min(...Object.values(concert.price));
   
@@ -135,18 +116,22 @@ function ConcertCard({ concert }: { concert: ConcertEvent }) {
   const day = eventDate.getDate();
 
   return (
-    <Link href={`/concerts/${concert.id}`}>
-      <div className="group rounded-lg overflow-hidden bg-white dark:bg-white shadow-md hover:shadow-xl transition-shadow duration-300 h-full flex flex-col">
+    <Link 
+      href={`/concerts/${concert.id}`}
+      className="h-full"
+    >
+      <div className="group flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-md transition-shadow duration-300 hover:shadow-xl">
         <div className="relative aspect-[3/2] w-full overflow-hidden">
-        <Image
-    src={concert.image}
-    alt={concert.title}
-    fill
-    className="object-cover transition-transform duration-300 group-hover:scale-105"
-  />
+          <Image
+            src={concert.image}
+            alt={concert.title}
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
           
           {/* Date badge - top left */}
-          <div className="absolute top-2 left-2 bg-secondary-500 dark:bg-secondary-600 text-white rounded-full w-12 h-12 flex flex-col items-center justify-center text-center">
+          <div className="absolute left-2 top-2 flex h-12 w-12 flex-col items-center justify-center rounded-full bg-secondary-500 text-center text-white">
             <span className="text-xs font-bold">{shortMonth}</span>
             <span className="text-lg font-bold leading-tight">{day}</span>
           </div>
@@ -156,40 +141,35 @@ function ConcertCard({ concert }: { concert: ConcertEvent }) {
             {displayGenres.map((genre, index) => (
               <div 
                 key={index} 
-                className="bg-tertiary-500 text-black px-2 py-0.5 rounded-full text-xs font-medium"
+                className="rounded-full bg-tertiary-500 px-2 py-0.5 text-xs font-medium text-black"
               >
                 {genre}
               </div>
             ))}
-            {/* {hasMoreGenres && (
-              <div className="bg-tertiary-300 text-black px-2 py-0.5 rounded-full text-xs font-medium">
-                +{genres.length - 2} more
-              </div>
-            )} */}
           </div>
         </div>
         
-        <div className="p-4 flex flex-col flex-grow">
-        <h3 className="transition-colors duration-300 ease-in-out hover:text-secondary-600 text-lg font-display font-bold mb-1 line-clamp-2 text-primary-700 dark:text-primary-300">
-  {concert.title}
-</h3>
+        <div className="flex flex-grow flex-col p-4">
+          <h3 className="mb-1 line-clamp-2 font-bold text-lg text-primary-700 transition-colors duration-300 ease-in-out hover:text-secondary-600">
+            {concert.title}
+          </h3>
           
-          <p className="text-base font-semibold mb-2 text-black dark:text-black">
+          <p className="mb-2 text-base font-semibold text-black">
             {concert.artist}
           </p>
           
-          <div className="text-sm text-gray-800 dark:text-gray-800 mb-2">
+          <div className="mb-2 text-sm text-gray-800">
             <p className="mb-1">{concert.location}</p>
             <p className="font-medium">
               {formattedDate} | {concert.time}
             </p>
           </div>
           
-          <div className="mt-auto pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-            <span className="text-sm font-semibold text-secondary-600 dark:text-secondary-400">
-              From {formatCurrency(lowestPrice)}
+          <div className="mt-auto flex items-center justify-between border-t border-gray-200 pt-3">
+            <span className="text-sm font-semibold text-secondary-600">
+              From {formatCurrency(lowestPrice, concert.currency)}
             </span>
-            <span className="text-sm rounded-full bg-secondary-800 dark:bg-secondary-800 text-white dark:text-white px-3 py-1">
+            <span className="rounded-full bg-secondary-800 px-3 py-1 text-sm text-white">
               {concert.seats} seats
             </span>
           </div>
