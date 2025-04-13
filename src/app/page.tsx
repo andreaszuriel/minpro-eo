@@ -5,15 +5,11 @@ import ConcertListSection from '@/components/organisms/ConcertListSection';
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen">
+    <main className="flex flex-col">
       <HeroSection />
       <FeaturedConcertsSection />
       <ConcertListSection />
       {/* You can add more sections here as you build them */}
-      {/* <FeaturedConcertsSection /> */}
-      {/* <TestimonialsSection /> */}
-      {/* <FAQSection /> */}
-      {/* <NewsletterSection /> */}
     </main>
   );
 }

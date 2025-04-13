@@ -37,7 +37,7 @@ export interface ConcertEvent {
       },
       currency: "IDR",
       image: "https://i.pinimg.com/1200x/33/9c/20/339c207729a108fa0402c3d9c73f7f75.jpg",
-      description: "Celebrate the 30th anniversary of the iconic Vans Warped Tour with two days of punk, rock, and alternative music in Washington, D.C.",
+      description: "Celebrate the 30th anniversary of the iconic Vans Warped Tour at the Festival Grounds at RFK Stadium in Washington, D.C., where two days of punk, rock, and alternative music await. This milestone event brings together a diverse lineup of artists under the banner of 'Variety,' ensuring a high-energy experience that honors the tour’s legacy of raw, rebellious sound. From June 14 to 15, 2025, starting at 4:00 PM, fans can choose from VIP, General Admission, or Lawn tiers to immerse themselves in a festival atmosphere that has defined generations of music lovers. Organized by Vans and the Kevin Lyman Group, this event promises not only performances but also a vibrant community celebration, complete with 20,000 seats to accommodate the massive turnout expected for this historic occasion.",
       organizer: "Vans / Kevin Lyman Group"
     },
     {
@@ -58,7 +58,7 @@ export interface ConcertEvent {
       },
       currency: "IDR",
       image: "https://i.pinimg.com/736x/77/9e/fd/779efdd7ffe4e58169ef71a6b5739855.jpg",
-      description: "Experience the powerful performance of BAND-MAID as they bring their WORLD DOMINATION tour to Tokyo.",
+      description: "Experience the powerful performance of BAND-MAID as they bring their WORLD DOMINATION Tour to LINE CUBE SHIBUYA in Tokyo, Japan, on April 18, 2025, at 8:00 PM. Known for their unique blend of hard rock and maid café aesthetics, this all-female band delivers electrifying shows that captivate audiences with intricate musicianship and infectious energy. With only 2,000 seats available, this intimate concert offers Premium, Standard, and Balcony tiers, catering to fans eager to witness BAND-MAID’s commanding stage presence. Organized by Crown Records, the event promises a night of relentless rock anthems, showcasing why the band continues to conquer global stages with their unapologetic sound and charismatic performances.",
       organizer: "Crown Records"
     },
     {
@@ -79,7 +79,7 @@ export interface ConcertEvent {
       },
       currency: "IDR",
       image: "https://i.pinimg.com/1200x/45/73/6f/45736fa59bce05d445a1eda03a28e008.jpg",
-      description: "Join Falling In Reverse on their Popular MonsTOUR II with special guests, delivering an unforgettable night in Chicago.",
+      description: "Join Falling In Reverse for their Popular MonsTOUR II at the United Center in Chicago, IL, on April 19, 2025, at 7:30 PM, for a night of post-hardcore intensity. Accompanied by special guests, the band, led by their dynamic frontman, will deliver a setlist packed with fan favorites and new tracks, ensuring an unforgettable experience for the 23,000 attendees expected to fill the venue. Fans can choose from Floor, Lower Bowl, or Upper Bowl seating to get up close or soak in the massive energy from above, all under the expert production of Live Nation. This concert builds on Falling In Reverse’s reputation for theatrical performances and raw emotion, making it a must-see event for those craving a visceral connection to music that pushes boundaries.",
       organizer: "Live Nation"
     },
     {
@@ -100,7 +100,7 @@ export interface ConcertEvent {
         },
         currency: "IDR",
         image: "https://i.pinimg.com/1200x/76/4a/31/764a31eaab43abb11770d0dd0c13404f.jpg",
-        description: "YOASOBI lights up Jakarta with their Asia Tour 2025, delivering heartfelt J-Pop anthems and electrifying performances from their latest hits.",
+        description: "YOASOBI lights up the Jakarta Convention Center in Jakarta, Indonesia, on April 15, 2025, at 7:00 PM, as part of their Asia Tour 2025, bringing their signature J-Pop sound to 5,000 fans. Known for their storytelling through heartfelt lyrics and vibrant melodies, the duo will perform hits that have resonated worldwide, creating an intimate yet electrifying atmosphere in this highly anticipated show. With ticket options including VIP, Floor, and Seated tiers, attendees can tailor their experience to feel every beat of YOASOBI’s dynamic setlist, organized by PK Entertainment. This concert promises a night of emotional anthems and stunning visuals, showcasing why YOASOBI has become a global sensation in the J-Pop scene.",
         organizer: "PK Entertainment"
     },
     {

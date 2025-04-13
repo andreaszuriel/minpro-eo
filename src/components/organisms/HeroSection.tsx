@@ -4,17 +4,17 @@ import { Button } from "@/components/ui/button";
 
 export default function HeroSection() {
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-900 dark:bg-gray-900 px-4">
+    <section className="flex flex-col items-center justify-center py-20 md:py-32 bg-gray-900 dark:bg-gray-900 px-4">
       <h1 className="text-white text-4xl md:text-6xl font-bold text-center mb-6">
         One-stop platform for concerts
-        <br />
+        <br className="hidden md:block" />
         <span className="text-primary-600">attenders</span> and{" "}
         <span className="text-primary-600">organizers</span>
       </h1>
 
       <p className="text-lg md:text-xl text-gray-300 dark:text-gray-300 text-center mb-10">
         Share your passion by joining a concert or
-        <br />
+        <br className="hidden md:block" />
         create a new concert to be shared with others
       </p>
 
@@ -36,7 +36,6 @@ export default function HeroSection() {
           Create Concerts
         </Button>
       </div>
-    </div>
+    </section>
   );
 }
-
