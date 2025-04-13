@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=Fredoka:wght@300..700&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,700&display=swap');
+
 
 @import "tailwindcss";
 
@@ -6,6 +8,7 @@
   /* Font Families */
   --font-display: "Fredoka", sans-serif;
   --font-basic: "Figtree", sans-serif;
+  --font-brand: "Cabinet Grotesk", sans-serif;
 
   /* Font Colors */
   --font-color-base: oklch(0 0 0); /* #000000 */
