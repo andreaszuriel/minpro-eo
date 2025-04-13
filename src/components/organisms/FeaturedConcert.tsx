@@ -27,16 +27,16 @@ const ConcertCard: React.FC<ConcertCardProps> = ({
     <div className="relative bg-gray-900 dark:bg-gray-900 overflow-hidden shadow-lg transition-shadow duration-300 hover:shadow-xl w-full h-full flex flex-col group">
       {/* Image Container */}
       <div className="relative w-full h-3/5 md:h-2/3 flex-shrink-0 overflow-hidden">
-        <div className="relative w-full h-full transition-transform duration-300 group-hover:scale-105">
-          <Image
-            src={imageUrl}
-            alt={`${title} by ${artist}`}
-            layout="fill"
-            objectFit="cover"
-          />
-          {/* Gradient overlay - adds the dimming effect with smooth transition */}
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/70 via-gray-900/40 to-transparent"></div>
-        </div>
+      <div className="relative w-full h-full transition-transform duration-300 group-hover:scale-105">
+  <Image
+    src={imageUrl}
+    alt={`${title} by ${artist}`}
+    fill
+    className="object-cover"
+  />
+  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/70 via-gray-900/40 to-transparent"></div>
+</div>
+
         <Badge className="absolute top-3 right-4 bg-tertiary-500 text-black z-10">
           {genre}
         </Badge>
@@ -72,7 +72,7 @@ const ConcertCard: React.FC<ConcertCardProps> = ({
 export default function FeaturedConcertsSection() {
   return (
     <div className="bg-slate-200 min-h-screen flex items-center justify-center py-[10vh]">
-      <section className="w-full max-w-7xl mx-auto h-full flex flex-col">
+      <section className="w-full mx-auto h-full flex flex-col">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-6 md:mb-8 lg:mb-12 text-primary-600 px-4 flex-shrink-0">
           THIS WEEK'S TOP CONCERTS
         </h2>

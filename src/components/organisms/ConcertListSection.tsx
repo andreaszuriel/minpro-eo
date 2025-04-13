@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { concertList, ConcertEvent } from '@/components/data/concertlist';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function ConcertListSection() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -116,7 +117,7 @@ function ConcertCard({ concert }: { concert: ConcertEvent }) {
   // Split genres and limit to showing max 3
   const genres = concert.genre.split('/').map(genre => genre.trim());
   const displayGenres = genres.slice(0, 2);
-  const hasMoreGenres = genres.length > 2;
+  // const hasMoreGenres = genres.length > 2;
 
   // Get the lowest price from all tiers
   const lowestPrice = Math.min(...Object.values(concert.price));
@@ -137,11 +138,12 @@ function ConcertCard({ concert }: { concert: ConcertEvent }) {
     <Link href={`/concerts/${concert.id}`}>
       <div className="group rounded-lg overflow-hidden bg-white dark:bg-white shadow-md hover:shadow-xl transition-shadow duration-300 h-full flex flex-col">
         <div className="relative aspect-[3/2] w-full overflow-hidden">
-          <img
-            src={concert.image}
-            alt={concert.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+        <Image
+    src={concert.image}
+    alt={concert.title}
+    fill
+    className="object-cover transition-transform duration-300 group-hover:scale-105"
+  />
           
           {/* Date badge - top left */}
           <div className="absolute top-2 left-2 bg-secondary-500 dark:bg-secondary-600 text-white rounded-full w-12 h-12 flex flex-col items-center justify-center text-center">
