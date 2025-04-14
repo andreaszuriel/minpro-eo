@@ -139,9 +139,9 @@ function FeaturedMainCard({ concert, isActive }: FeaturedMainCardProps) {
       </div>
       
       {/* Date Badge */}
-      <div className="absolute right-4 top-4 flex h-16 w-16 flex-col items-center justify-center rounded-lg bg-tertiary-500 text-center shadow-lg">
-        <span className="text-sm font-bold uppercase text-gray-900">{month}</span>
-        <span className="text-2xl font-bold leading-none text-black">{day}</span>
+      <div className="absolute right-4 top-4 flex h-16 w-16 flex-col items-center justify-center rounded-lg bg-primary-600 text-center shadow-lg">
+        <span className="text-sm font-bold uppercase text-gray-200">{month}</span>
+        <span className="text-2xl font-bold leading-none text-white">{day}</span>
       </div>
       
       {/* Content */}
@@ -149,7 +149,7 @@ function FeaturedMainCard({ concert, isActive }: FeaturedMainCardProps) {
         href={`/concerts/${concert.id}`}
         className="relative flex h-full min-h-[400px] flex-col justify-end p-6 md:p-8"
       >
-        <div className="mb-2 rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white w-fit">
+        <div className="mb-2 rounded-full bg-tertiary-500 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-black w-fit">
           {genreList}
         </div>
         
@@ -167,7 +167,7 @@ function FeaturedMainCard({ concert, isActive }: FeaturedMainCardProps) {
         </div>
         
         <Button 
-          className="group flex w-full items-center justify-center space-x-2 rounded-lg bg-primary-600 py-3 text-white transition-transform hover:bg-primary-400 md:w-1/2"
+          className="group flex w-full items-center justify-center space-x-2 rounded-lg bg-secondary-600 py-3 text-white transition-transform hover:bg-secondary-400 md:w-1/2"
         >
           <span>Get Tickets</span>
           <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
