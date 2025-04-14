@@ -169,7 +169,7 @@ function ConcertCard({ concert }: { concert: ConcertEvent }) {
             <span className="text-sm font-semibold text-secondary-600">
               From {formatCurrency(lowestPrice, concert.currency)}
             </span>
-            <span className="rounded-full bg-secondary-800 px-3 py-1 text-sm text-white">
+            <span className="text-center rounded-full bg-secondary-800 px-3 py-1 text-xs text-white">
               {concert.seats} seats
             </span>
           </div>
