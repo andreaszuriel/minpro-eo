@@ -1,11 +1,10 @@
-// src/models/interface.ts
 export interface RegisterInput {
   name: string;
   email: string;
   password: string;
-  role: 'customer' | 'organizer';
   referralCode?: string;
 }
+
 
 export interface UserPayload {
   id: number;
@@ -14,7 +13,7 @@ export interface UserPayload {
   name: string;
 }
 
-// Interface transaksi sesuai dengan Prisma model Transaction
+
 export interface Transaction {
   id: number;
   userId: number;
@@ -22,12 +21,11 @@ export interface Transaction {
   ticketQuantity: number;
   finalPrice: number;
   status: string;
-  paymentProof: string | null;  // Now allows string or null
+  paymentProof: string | null;  
   createdAt: Date;
 }
 
 
-// Interface profile user lengkap, termasuk history transaksi
 export interface UserProfile {
   id: number;
   name: string;

@@ -22,7 +22,7 @@ export class UserController {
 
   public async updateProfile(req: Request, res: Response): Promise<void> {
     try {
-      // @ts-ignore - ambil user id dari req.user
+      // @ts-ignore 
       const userId = req.user.id;
       const updatedProfile = await this.userService.updateUserProfile(userId, req.body);
       res.status(200).json(updatedProfile);

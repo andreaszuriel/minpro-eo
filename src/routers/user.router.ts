@@ -4,7 +4,7 @@ import { AuthenticationMiddleware } from '../middlewares/authentication.middlewa
 import { ValidationMiddleware } from '../middlewares/validation.middleware';
 import { z } from 'zod';
 
-// Schema validasi untuk update profile (opsional)
+// validation schema for updating user profile
 const updateProfileSchema = z.object({
   name: z.string().min(1).optional(),
   password: z.string().min(6).optional(),

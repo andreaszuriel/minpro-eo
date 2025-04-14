@@ -6,7 +6,7 @@ const registerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
-  referralCode: z.string().optional()  // Role dihilangkan karena service menetapkannya sebagai "customer"
+  referralCode: z.string().optional()  
 });
 
 const loginSchema = z.object({
@@ -44,7 +44,7 @@ export class AuthController {
   public async login(req: Request, res: Response): Promise<void> {
     try {
       const input = loginSchema.parse(req.body);  // Validating input
-      const { email, password } = input;  // Destructuring validated data
+      const { email, password } = input;  
       const result = await this.authService.login(email, password);  // Pass validated data to service
       res.status(200).json({
         data: result

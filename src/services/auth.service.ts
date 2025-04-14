@@ -9,7 +9,7 @@ export class AuthService {
   }
 
   // Register User
-  public async register(data: { name: string; email: string; password: string; referralCode?: string }): Promise<{ message: string }> {
+  public async register(data: RegisterInput): Promise<{ message: string }> {
     const { name, email, password, referralCode } = data;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -20,7 +20,6 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newReferralCode = this.generateReferralCode();
 
-    // Set role to "customer" by default
     const role = "customer";
 
     const user = await prisma.user.create({
@@ -28,13 +27,12 @@ export class AuthService {
         name,
         email,
         password: hashedPassword,
-        role, // Hardcoded to "customer"
+        role,
         referralCode: newReferralCode,
-        referredBy: referralCode || null
+        referredBy: referralCode || null,
       }
     });
 
-    // Referral logic if referral code is provided
     if (referralCode) {
       const referrer = await prisma.user.findUnique({ where: { referralCode } });
       if (referrer) {

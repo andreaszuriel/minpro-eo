@@ -1,4 +1,3 @@
-// src/middlewares/authentication.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { JwtUtils } from '../lib/token.config';
 

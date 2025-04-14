@@ -14,7 +14,7 @@ export class AuthRouter {
   }
 
   private routes(): void {
-    // Define the schema for registration (role removed)
+    // Define the schema for registration and login
     const registerSchema = z.object({
       name: z.string().min(2),
       email: z.string().email(),
