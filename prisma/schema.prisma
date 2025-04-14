@@ -7,6 +7,7 @@ datasource db {
   url        = env("DATABASE_URL")
   directUrl  = env("DIRECT_URL")
 }
+
 // Define the enum for roles
 enum UserRole {
   customer
@@ -18,9 +19,9 @@ model User {
   name         String
   email        String    @unique
   password     String
-  role         UserRole  // Now using the enum for role, either 'customer' or 'organizer'
+  role         UserRole
   referralCode String    @unique
-  referredBy   String?   // referral code used to register
+  referredBy   String?   
   points       Int       @default(0)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -56,9 +57,9 @@ model Transaction {
   userId         Int
   eventId        Int
   ticketQuantity Int
-  finalPrice     Int       
-  status         String    
-  paymentProof   String?   
+  finalPrice     Int
+  status         String
+  paymentProof   String?
   createdAt      DateTime  @default(now())
   
   user           User      @relation(fields: [userId], references: [id])
@@ -81,7 +82,7 @@ model Coupon {
   id         Int      @id @default(autoincrement())
   code       String   @unique
   userId     Int
-  discount   Int      
+  discount   Int
   expiresAt  DateTime
   createdAt  DateTime @default(now())
 

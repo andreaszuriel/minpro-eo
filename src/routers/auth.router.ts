@@ -14,12 +14,11 @@ export class AuthRouter {
   }
 
   private routes(): void {
-    // Define the schemas for validation
+    // Define the schema for registration (role removed)
     const registerSchema = z.object({
       name: z.string().min(2),
       email: z.string().email(),
       password: z.string().min(6),
-      role: z.enum(["customer", "organizer"]),
       referralCode: z.string().optional()
     });
 
@@ -28,7 +27,7 @@ export class AuthRouter {
       password: z.string().min(6),
     });
 
-    // Register User
+    // Use validation middleware
     this.router.post('/register', ValidationMiddleware.validate({ body: registerSchema }), this.authController.register.bind(this.authController));
     this.router.post('/login', ValidationMiddleware.validate({ body: loginSchema }), this.authController.login.bind(this.authController));
   }

@@ -6,8 +6,7 @@ const registerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(["customer", "organizer"]),
-  referralCode: z.string().optional()
+  referralCode: z.string().optional()  // Role dihilangkan karena service menetapkannya sebagai "customer"
 });
 
 const loginSchema = z.object({
@@ -22,7 +21,6 @@ export class AuthController {
     this.authService = new AuthService();
   }
 
-  // Register User
   public async register(req: Request, res: Response): Promise<void> {
     try {
       const input = registerSchema.parse(req.body);  // Validating input
@@ -31,13 +29,11 @@ export class AuthController {
     } catch (error: any) {
       console.error(error);
       if (error instanceof z.ZodError) {
-        // If validation fails
         res.status(400).json({
           message: "Validation Error",
           errors: error.errors
         });
       } else {
-        // Handle other errors, like database or internal errors
         res.status(error.message === "User already exists" ? 400 : 500).json({
           message: error.message || "Server error"
         });
@@ -45,7 +41,6 @@ export class AuthController {
     }
   }
 
-  // Login User
   public async login(req: Request, res: Response): Promise<void> {
     try {
       const input = loginSchema.parse(req.body);  // Validating input
@@ -57,13 +52,11 @@ export class AuthController {
     } catch (error: any) {
       console.error(error);
       if (error instanceof z.ZodError) {
-        // If validation fails
         res.status(400).json({
           message: "Validation Error",
           errors: error.errors
         });
       } else {
-        // Handle login errors
         res.status(401).json({
           message: "Unauthorized: Failed login, check your credentials",
           error: error.message
