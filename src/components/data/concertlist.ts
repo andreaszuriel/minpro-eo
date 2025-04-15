@@ -27,7 +27,7 @@ export interface ConcertEvent {
       startDate: "2025-06-14",
       endDate: "2025-06-15",
       time: "4:00 PM",
-      location: "Festival Grounds at RFK Stadium, Washington, D.C.",
+      location: "Festival Grounds at RFK Stadium, Washington, D.C, USA",
       seats: 20000,
       tiers: ["VIP", "General Admission", "Lawn"],
       price: {
@@ -69,7 +69,7 @@ export interface ConcertEvent {
       startDate: "2025-04-19",
       endDate: "2025-04-19",
       time: "7:30 PM",
-      location: "United Center, Chicago, IL",
+      location: "United Center, Chicago, IL, USA",
       seats: 23000,
       tiers: ["Floor", "Lower Bowl", "Upper Bowl"],
       price: {
@@ -111,7 +111,7 @@ export interface ConcertEvent {
       startDate: "2025-04-11",
       endDate: "2025-04-13",
       time: "10:00 AM",
-      location: "Empire Polo Club, Indio, CA",
+      location: "Empire Polo Club, Indio, CA, USA",
       seats: 125000,
       tiers: ["VIP", "General Admission", "Camping"],
       price: {
@@ -153,7 +153,7 @@ export interface ConcertEvent {
       startDate: "2025-08-01",
       endDate: "2025-08-04",
       time: "9:00 AM",
-      location: "Grant Park, Chicago, IL",
+      location: "Grant Park, Chicago, IL, USA",
       seats: 100000,
       tiers: ["VIP", "General Admission", "Lounge"],
       price: {
@@ -237,7 +237,7 @@ export interface ConcertEvent {
         startDate: "2025-05-15",
         endDate: "2025-05-15",
         time: "8:00 PM",
-        location: "SoFi Stadium, Los Angeles, CA",
+        location: "SoFi Stadium, Los Angeles, CA, USA",
         seats: 70000,
         tiers: ["VIP", "Floor", "Lower Bowl", "Upper Bowl"],
         price: {
@@ -280,7 +280,7 @@ export interface ConcertEvent {
         startDate: "2025-07-10",
         endDate: "2025-07-10",
         time: "8:00 PM",
-        location: "MetLife Stadium, East Rutherford, NJ",
+        location: "MetLife Stadium, East Rutherford, NJ, USA",
         seats: 82000,
         tiers: ["VIP", "Floor", "Lower Level", "Upper Level"],
         price: {
@@ -302,7 +302,7 @@ export interface ConcertEvent {
         startDate: "2025-08-05",
         endDate: "2025-08-05",
         time: "4:00 PM",
-        location: "Levi's Stadium, Santa Clara, CA",
+        location: "Levi's Stadium, Santa Clara, CA, USA",
         seats: 68000,
         tiers: ["VIP", "Pit", "Reserved Seating"],
         price: {
@@ -323,7 +323,7 @@ export interface ConcertEvent {
         startDate: "2025-09-12",
         endDate: "2025-09-12",
         time: "5:30 PM",
-        location: "AT&T Stadium, Arlington, TX",
+        location: "AT&T Stadium, Arlington, TX, USA",
         seats: 80000,
         tiers: ["VIP", "Floor", "Lower Bowl", "Upper Bowl"],
         price: {
@@ -345,7 +345,7 @@ export interface ConcertEvent {
         startDate: "2025-10-01",
         endDate: "2025-10-01",
         time: "6:00 PM",
-        location: "Scotiabank Arena, Toronto, ON",
+        location: "Scotiabank Arena, Toronto, ON, Canada",
         seats: 19000,
         tiers: ["VIP", "Floor", "Lower Bowl", "Upper Bowl"],
         price: {
@@ -367,7 +367,7 @@ export interface ConcertEvent {
         startDate: "2025-11-15",
         endDate: "2025-11-15",
         time: "11:00 AM",
-        location: "Crypto.com Arena, Los Angeles, CA",
+        location: "Crypto.com Arena, Los Angeles, CA, USA",
         seats: 20000,
         tiers: ["VIP", "Floor", "Lower Level", "Upper Level"],
         price: {
@@ -389,7 +389,7 @@ export interface ConcertEvent {
         startDate: "2025-12-05",
         endDate: "2025-12-05",
         time: "2:00 PM",
-        location: "United Center, Chicago, IL",
+        location: "United Center, Chicago, IL, USA",
         seats: 23500,
         tiers: ["VIP", "Floor", "Lower Level", "Upper Level"],
         price: {
@@ -431,7 +431,7 @@ export interface ConcertEvent {
         startDate: "2025-06-10",
         endDate: "2025-06-10",
         time: "6:00 PM",
-        location: "The Fillmore, Philadelphia, PA",
+        location: "The Fillmore, Philadelphia, PA, USA",
         seats: 3300,
         tiers: ["VIP", "Floor", "Balcony"],
         price: {
@@ -473,7 +473,7 @@ export interface ConcertEvent {
         startDate: "2025-04-27",
         endDate: "2025-04-27",
         time: "5:00 PM",
-        location: "The Danforth Music Hall, Toronto, Canada",
+        location: "The Danforth Music Hall, Toronto, ON, Canada",
         seats: 7000,
         tiers: ["VIP", "General Admission"],
         price: {
@@ -493,7 +493,7 @@ export interface ConcertEvent {
         startDate: "2025-07-10",
         endDate: "2025-07-10",
         time: "7:00 PM",
-        location: "Brooklyn Steel, Brooklyn, NY",
+        location: "Autódromo de Interlagos, Rio de Janeiro, Brazil",
         seats: 40000,
         tiers: ["VIP", "General Admission", "Balcony"],
         price: {

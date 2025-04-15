@@ -10,7 +10,11 @@
     "migrate:dev": "npx prisma migrate dev",
     "generate:dev": "npx prisma generate dev",
     "studio": "npx prisma studio",
-    "dev-backend": "ts-node-dev src/index.ts"
+    "dev-backend": "ts-node-dev src/index.ts",
+    "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",

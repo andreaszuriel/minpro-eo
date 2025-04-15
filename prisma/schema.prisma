@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
-
+  directUrl  = env("DIRECT_URL")
 }
 // Define the enum for roles
 enum UserRole {
@@ -38,8 +38,8 @@ model Event {
   endDate       DateTime 
   location      String   
   seats         Int      
-  tiers         Json     
-  price         Int      
+  tiers         Json     // Store tier names as JSON (array of strings)
+  price         Json     // Store tiered pricing as JSON (object with tier names as keys and prices as values)
   image         String?  
   description   String?  
   organizerId   Int
@@ -50,6 +50,8 @@ model Event {
   reviews       Review[]
   transactions  Transaction[]
 }
+
+
 
 model Transaction {
   id             Int       @id @default(autoincrement())
