@@ -14,7 +14,6 @@ export interface UserPayload {
   name: string;
 }
 
-// Interface for Transaction (matches Prisma model Transaction)
 export interface Transaction {
   id: number;
   userId: number;
@@ -26,7 +25,6 @@ export interface Transaction {
   createdAt: Date;
 }
 
-// Interface for input when creating/updating an Event
 export interface EventInput {
   title: string;
   genre: string;
@@ -34,13 +32,13 @@ export interface EventInput {
   endDate: Date | string;
   location: string;
   seats: number;
-  tiers: any;       // You might refine this type based on your JSON structure
-  price: number | any; // If stored as JSON, adjust accordingly
-  image?: string;    // Optional; could be undefined
+  tiers: any;      
+  price: number | any; 
+  image?: string;    
   description?: string;
 }
 
-// Interface for the response/payload for an Event
+
 export interface EventPayload {
   id: number;
   title: string;
@@ -52,9 +50,26 @@ export interface EventPayload {
   tiers: any;
   price: number | any;
   image?: string | null;
-  description?: string | null;  // Allow description to be string, null, or undefined
+  description?: string | null;  
   organizerId: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface TransactionInput {
+  eventId: number;
+  ticketQuantity: number;
+}
+
+
+export interface TransactionPayload {
+  id: number;
+  userId: number;
+  eventId: number;
+  ticketQuantity: number;
+  finalPrice: number;
+  status: string;
+  paymentProof: string | null;
+  createdAt: Date;
 }
 
