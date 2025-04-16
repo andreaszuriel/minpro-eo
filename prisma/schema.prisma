@@ -7,6 +7,7 @@ datasource db {
   url        = env("DATABASE_URL")
   directUrl  = env("DIRECT_URL")
 }
+
 // Define the enum for roles
 enum UserRole {
   customer
@@ -38,8 +39,8 @@ model Event {
   endDate       DateTime 
   location      String   
   seats         Int      
-  tiers         Json     // Store tier names as JSON (array of strings)
-  price         Json     // Store tiered pricing as JSON (object with tier names as keys and prices as values)
+  tiers         Json     
+  price         Json     
   image         String?  
   description   String?  
   organizerId   Int
@@ -51,8 +52,6 @@ model Event {
   transactions  Transaction[]
 }
 
-
-
 model Transaction {
   id             Int       @id @default(autoincrement())
   userId         Int
@@ -60,7 +59,7 @@ model Transaction {
   ticketQuantity Int
   finalPrice     Int
   status         String
-  paymentProof   String?
+  paymentProof   String?   // Returns string or null
   createdAt      DateTime  @default(now())
   
   user           User      @relation(fields: [userId], references: [id])
