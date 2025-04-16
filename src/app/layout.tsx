@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "../components/molecules/navbar.module";
+import Navbar from "../components/organisms/Navbar";
 import Footer from "../components/molecules/footer.module";
+import { FilterProvider } from "@/lib/FilterContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,12 +27,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <Navbar />
-        {children}
-        <Footer />
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <FilterProvider>
+          <Navbar />
+          {children}
+          <Footer />
+        </FilterProvider>
       </body>
     </html>
   );

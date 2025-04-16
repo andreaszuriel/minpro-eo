@@ -1,4 +1,4 @@
-import { Music, Ticket, DollarSign, Users, BarChart3 } from "lucide-react";
+import { AudioLines, Ticket, DollarSign, Users, BarChart3 } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 
@@ -77,8 +77,8 @@ export default function LeftLogin() {
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <Music className="w-8 h-8 mr-3 text-primary-700" />
-            <h1 className="text-5xl font-bold font-brand">livewave</h1>
+            <AudioLines className="w-8 h-8 mr-3 text-primary-700" />
+            <h1 className="text-5xl font-bold font-brand">live<span className= "text-secondary-400">wave</span></h1>
           </motion.div>
 
           {/* Benefits */}
