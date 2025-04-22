@@ -3,6 +3,7 @@ import { AuthRouter } from './routers/auth.router';
 import { UserRouter } from './routers/user.router';
 import { EventRouter } from './routers/event.router';
 import { TransactionRouter } from './routers/transactions.router';
+import { startExpirationCron } from './utils/cron'; 
 
 class Server {
   private app: Application;
@@ -27,6 +28,9 @@ class Server {
   }
 
   public start(): void {
+    // 2. Start cron before server begins listening
+    startExpirationCron();
+
     this.app.listen(this.port, () => {
       console.log(`Server running on port ${this.port}`);
     });

@@ -1,4 +1,4 @@
-// src/models/interface.ts
+
 
 export interface RegisterInput {
   name: string;
@@ -12,6 +12,17 @@ export interface UserPayload {
   email: string;
   role: 'customer' | 'organizer';
   name: string;
+}
+
+export interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  role: 'customer' | 'organizer';
+  points: number;
+  referralCode: string;
+  createdAt: Date;
+  transactions: Transaction[];
 }
 
 export interface Transaction {
@@ -60,8 +71,8 @@ export interface TransactionInput {
   eventId: number;
   tierType: string;
   ticketQuantity: number;
-  couponCode?: string;   // optional
-  usePoints?: boolean;   // whether to redeem points
+  couponCode?: string;   
+  usePoints?: boolean;   
 }
 
 export interface TransactionPayload {
