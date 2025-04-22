@@ -3,88 +3,187 @@ generator client {
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  directUrl  = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Optional: Often used for migrations/introspection
 }
 
-// Define the enum for roles
-enum UserRole {
-  customer
-  organizer
-}
+// --- Core Auth.js Models (Aligned with Adapter) ---
 
 model User {
-  id           Int       @id @default(autoincrement())
-  name         String
-  email        String    @unique
-  password     String
-  role         UserRole
-  referralCode String    @unique
-  referredBy   String?   
-  points       Int       @default(0)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  events       Event[]   @relation("OrganizerEvents")
-  transactions Transaction[]
-  reviews      Review[]
-  coupons      Coupon[]
-}
+  id            String          @id @default(cuid()) // Use String CUID for Auth.js compatibility
+  name          String?
+  email         String          @unique // Required by Auth.js adapter
+  emailVerified DateTime?       // Standard Auth.js field
+  image         String?         // Standard Auth.js field
+  password      String?         // Your custom field
+ 
+  referredBy    String?         // Your custom field
+  points        Int             @default(0) // Your custom field
+  role          UserRole        @default(customer) // Your custom field
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
-model Event {
-  id            Int      @id @default(autoincrement())
-  title         String   
-  genre         String   
-  startDate     DateTime 
-  endDate       DateTime 
-  location      String   
-  seats         Int      
-  tiers         Json     
-  price         Json     
-  image         String?  
-  description   String?  
-  organizerId   Int
-  organizer     User     @relation("OrganizerEvents", fields: [organizerId], references: [id])
-  averageRating Float?   
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  // Auth.js relations (names match lowercase model names by convention)
+  accounts      Account[]
+  sessions      Session[]
+  authenticators Authenticator[] // If using passkeys/webauthn
+
+  // Your custom relations
+  coupons       Coupon[]
+  events        Event[]         @relation("OrganizerEvents")
   reviews       Review[]
   transactions  Transaction[]
 }
 
+model Account {
+  id                String   @id @default(cuid()) // Recommended standard ID
+  userId            String   // Foreign key to User.id (String)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt // Add @updatedAt
+
+  // Relation field must be lowercase 'user' for adapter compatibility
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId]) // Changed from @@id to @@unique as per latest standard
+  @@index([userId]) // Add index for performance
+}
+
+model Session {
+  id           String   @id @default(cuid()) // Recommended standard ID
+  sessionToken String   @unique             // Used by Auth.js to find session
+  userId       String   // Foreign key to User.id (String)
+  expires      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt // Add @updatedAt
+
+  // Relation field must be lowercase 'user' for adapter compatibility
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId]) // Add index for performance
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid()) // Add standard ID
+  identifier String                        // Email or other identifier
+  token      String   @unique             // The verification token
+  expires    DateTime
+
+  @@unique([identifier, token]) // Ensures combination is unique
+}
+
+// Optional: Only needed if using WebAuthn/Passkeys
+model Authenticator {
+  id                   String  @id @default(cuid()) // Add standard ID
+  credentialID         String  @unique
+  userId               String  // Foreign key to User.id (String)
+  providerAccountId    String  // Potentially useful, though often same as credentialID
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  createdAt DateTime @default(now()) // Add timestamp
+  updatedAt DateTime @updatedAt // Add timestamp
+
+  // Relation field should be lowercase 'user' for consistency
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId]) // Add index
+}
+
+
+// --- Your Custom Application Models ---
+
+model Event {
+  id            Int       @id @default(autoincrement()) // Your choice: Int is fine here
+  title         String
+  genre         String
+  startDate     DateTime
+  endDate       DateTime
+  location      String
+  seats         Int
+  tiers         Json      // Check compatibility/usage with Prisma JSON type
+  image         String?
+  description   String?
+  organizerId   String    // Matches User.id (String)
+  averageRating Float?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  price         Json      // Check compatibility/usage with Prisma JSON type
+
+  organizer     User      @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  reviews       Review[]
+  transactions  Transaction[]
+
+  @@index([organizerId]) // Add index for performance
+}
+
 model Transaction {
   id             Int       @id @default(autoincrement())
-  userId         Int
-  eventId        Int
+  userId         String    // Matches User.id (String)
+  eventId        Int       // Matches Event.id (Int)
   ticketQuantity Int
   finalPrice     Int
   status         String
-  paymentProof   String?   // Returns string or null
+  paymentProof   String?
   createdAt      DateTime  @default(now())
-  
-  user           User      @relation(fields: [userId], references: [id])
+  // updatedAt    DateTime  @updatedAt // Consider adding if transactions can be updated
+
   event          Event     @relation(fields: [eventId], references: [id])
+  user           User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([eventId])
 }
 
 model Review {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  eventId   Int
+  id        Int       @id @default(autoincrement())
+  userId    String    // Matches User.id (String)
+  eventId   Int       // Matches Event.id (Int)
   rating    Int
   comment   String?
-  createdAt DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id])
-  event     Event    @relation(fields: [eventId], references: [id])
+  createdAt DateTime  @default(now())
+  // updatedAt DateTime  @updatedAt // Consider adding if reviews can be updated
+
+  event     Event     @relation(fields: [eventId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, eventId]) // Prevent multiple reviews per user/event
+  @@index([userId])
+  @@index([eventId])
 }
 
 model Coupon {
-  id         Int      @id @default(autoincrement())
-  code       String   @unique
-  userId     Int
-  discount   Int
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  userId    String    // Matches User.id (String)
+  discount  Int
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  // updatedAt DateTime  @updatedAt // Consider adding if coupons can be updated
 
-  user       User     @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+// --- Enums ---
+
+enum UserRole {
+  customer
+  organizer
 }
