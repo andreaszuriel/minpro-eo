@@ -1,51 +1,47 @@
 import { Request, Response } from 'express';
 import { TransactionService } from '../services/transactions.services';
-import { TransactionInput } from '../models/interface';
+const svc = new TransactionService();
 
 export class TransactionController {
-  private transactionService: TransactionService;
-
-  constructor() {
-    this.transactionService = new TransactionService();
-  }
-
-  public createTransaction = async (req: Request, res: Response): Promise<void> => {
+  public create = async (req: Request, res: Response) => {
     try {
-      // @ts-ignore - pastikan middleware auth sudah menyuntikkan property user ke req
-      const userId: number = req.user.id;
-      const data: TransactionInput = req.body;
-      const result = await this.transactionService.createTransaction(data, userId);
-      res.status(201).json(result);
+      const userId = (req as any).user.id;
+      const payload = await svc.createTransaction(req.body, userId);
+      res.status(201).json(payload);
     } catch (err: any) {
-      console.error(err);
-      res.status(500).json({ message: "Server error" });
+      res.status(400).json({ message: err.message });
     }
   };
 
-  public getTransactionById = async (req: Request, res: Response): Promise<void> => {
+  public uploadProof = async (req: Request, res: Response) => {
     try {
-      const id: number = parseInt(req.params.id);
-      const transaction = await this.transactionService.getTransactionById(id);
-      if (!transaction) {
-        res.status(404).json({ message: "Transaction not found" });
-      } else {
-        res.status(200).json(transaction);
-      }
+      const id = Number(req.params.id);
+      // assume multer gave us req.file.path or URL
+      const proofUrl = (req as any).fileUrl as string;
+      const updated = await svc.uploadProof(id, proofUrl);
+      res.json(updated);
     } catch (err: any) {
-      console.error(err);
-      res.status(500).json({ message: "Server error" });
+      res.status(400).json({ message: err.message });
     }
   };
 
-  public updateTransactionStatus = async (req: Request, res: Response): Promise<void> => {
+  public approve = async (req: Request, res: Response) => {
     try {
-      const id: number = parseInt(req.params.id);
-      const { status, paymentProof } = req.body;
-      const result = await this.transactionService.updateTransactionStatus(id, status, paymentProof);
-      res.status(200).json(result);
+      const id = Number(req.params.id);
+      const paid = await svc.updateStatusToPaid(id);
+      res.json(paid);
     } catch (err: any) {
-      console.error(err);
-      res.status(500).json({ message: "Server error" });
+      res.status(400).json({ message: err.message });
+    }
+  };
+
+  public get = async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const txn = await svc.getById(id);
+      res.json(txn);
+    } catch (err: any) {
+      res.status(404).json({ message: err.message });
     }
   };
 }

@@ -1,6 +1,9 @@
 import express, { Application } from 'express';
 import { AuthRouter } from './routers/auth.router';
 import { UserRouter } from './routers/user.router';
+import { EventRouter } from './routers/event.router';
+import { TransactionRouter } from './routers/transactions.router';
+import { startExpirationCron } from './utils/cron'; 
 
 class Server {
   private app: Application;
@@ -20,9 +23,14 @@ class Server {
   private routes(): void {
     this.app.use('/api/auth', new AuthRouter().router);
     this.app.use('/api/user', new UserRouter().router);
+    this.app.use('/api/event', new EventRouter().router);
+    this.app.use('/api/transaction', new TransactionRouter().router);
   }
 
   public start(): void {
+    // 2. Start cron before server begins listening
+    startExpirationCron();
+
     this.app.listen(this.port, () => {
       console.log(`Server running on port ${this.port}`);
     });

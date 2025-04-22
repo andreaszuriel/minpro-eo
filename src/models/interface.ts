@@ -1,4 +1,4 @@
-// src/models/interface.ts
+
 
 export interface RegisterInput {
   name: string;
@@ -12,6 +12,17 @@ export interface UserPayload {
   email: string;
   role: 'customer' | 'organizer';
   name: string;
+}
+
+export interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  role: 'customer' | 'organizer';
+  points: number;
+  referralCode: string;
+  createdAt: Date;
+  transactions: Transaction[];
 }
 
 export interface Transaction {
@@ -58,18 +69,27 @@ export interface EventPayload {
 
 export interface TransactionInput {
   eventId: number;
+  tierType: string;
   ticketQuantity: number;
+  couponCode?: string;   
+  usePoints?: boolean;   
 }
-
 
 export interface TransactionPayload {
   id: number;
   userId: number;
   eventId: number;
+  tierType: string;
   ticketQuantity: number;
+  basePrice: number;
+  couponDiscount: number;
+  pointsUsed: number;
   finalPrice: number;
-  status: string;
-  paymentProof: string | null;
+  status: 'PENDING'|'WAITING_ADMIN'|'PAID'|'EXPIRED'|'CANCELED';
+  paymentProof?: string;
+  paymentDeadline: Date;
+  voucherUrl?: string;
+  ticketUrl?: string;
   createdAt: Date;
 }
 
