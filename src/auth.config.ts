@@ -1,5 +1,8 @@
 import type { NextAuthConfig } from 'next-auth';
 import Nodemailer from "next-auth/providers/nodemailer";
+import Credentials from "next-auth/providers/credentials";
+import { saltAndHashPassword, verifyPassword } from "@/utils/password";
+import { prisma } from "@/lib/prisma";
 
 // Check for required environment variables
 if (!process.env.EMAIL_SERVER_USER) {
@@ -32,16 +35,44 @@ export const authConfig = {
             },
             from: process.env.EMAIL_FROM,
         }),
-        // Add other providers like Google, GitHub etc. here
+        Credentials({
+            credentials: {
+                email: { label: "Email", type: "email" },
+                password: { label: "Password", type: "password" },
+            },
+            async authorize(credentials) {
+                if (!credentials?.email || !credentials?.password) {
+                    throw new Error("Email and password are required.");
+                }
+
+                const user = await prisma.user.findUnique({
+                    where: { email: credentials.email },
+                });
+
+                if (!user || !user.password) {
+                    throw new Error("Invalid credentials.");
+                }
+
+                const isValid = await verifyPassword(credentials.password, user.password);
+                if (!isValid) {
+                    throw new Error("Invalid credentials.");
+                }
+
+                return { id: user.id, email: user.email, name: user.name, role: user.role };
+            },
+        }),
     ],
     session: { strategy: "database" },
     pages: {
         signIn: '/auth/signin',
-        verifyRequest: '/auth/verify-request', // Page shown after email is sent
-        error: '/auth/error', // Error page
+        verifyRequest: '/auth/verify-request',
+        error: '/auth/error',
     },
     callbacks: {
-        // Your callbacks here
+        async session({ session, user }) {
+            session.user.id = user.id;
+            session.user.role = user.role;
+            return session;
+        },
     },
-    // Add pages, theme, debug options if needed
 } satisfies NextAuthConfig;

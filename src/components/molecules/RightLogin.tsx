@@ -1,11 +1,13 @@
-"use client"; 
+"use client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@iconify/react";
-import { MagicLinkForm } from "@/components/atoms/MagicLinkForm"; 
+import { MagicLinkForm } from "@/components/atoms/MagicLinkForm";
+import { handleCredentialsLogin, handleSignup } from "@/lib/actions";
+import { useState } from "react";
 
 interface AuthPanelProps {
   activeTab: string;
@@ -13,11 +15,31 @@ interface AuthPanelProps {
 }
 
 export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) {
+  const [error, setError] = useState<string | null>(null);
+
   const fadeAnimation = {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
     transition: { duration: 0.3 },
+  };
+
+  const handleCredentialsSubmit = async (formData: FormData) => {
+    try {
+      setError(null);
+      await handleCredentialsLogin(formData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred.");
+    }
+  };
+
+  const handleSignupSubmit = async (formData: FormData) => {
+    try {
+      setError(null);
+      await handleSignup(formData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred.");
+    }
   };
 
   return (
@@ -46,7 +68,52 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   Log In
                 </h2>
 
-                <MagicLinkForm />
+                {error && (
+                  <p className="text-red-500 text-center text-sm">{error}</p>
+                )}
+
+                <form action={handleCredentialsSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="credentialsEmail"
+                      className="text-sm font-medium text-black"
+                    >
+                      Email
+                    </label>
+                    <Input
+                      id="credentialsEmail"
+                      name="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      className="w-full text-black"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="credentialsPassword"
+                      className="text-sm font-medium text-black"
+                    >
+                      Password
+                    </label>
+                    <Input
+                      id="credentialsPassword"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      className="w-full text-black"
+                      required
+                    />
+                  </div>
+                  <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                    <Button
+                      type="submit"
+                      className="w-full bg-primary-600 hover:bg-secondary-700 transition-colors duration-300"
+                    >
+                      Sign In with Email
+                    </Button>
+                  </motion.div>
+                </form>
 
                 <div className="relative flex items-center justify-center">
                   <span className="bg-white px-2 text-sm text-gray-500">
@@ -56,6 +123,8 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                     <span className="w-full border-t"></span>
                   </div>
                 </div>
+
+                <MagicLinkForm />
 
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
@@ -90,7 +159,11 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   Sign Up
                 </h2>
 
-                <div className="space-y-4">
+                {error && (
+                  <p className="text-red-500 text-center text-sm">{error}</p>
+                )}
+
+                <form action={handleSignupSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label
@@ -101,9 +174,10 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                       </label>
                       <Input
                         id="firstName"
+                        name="firstName"
                         placeholder="John"
                         className="w-full text-black"
-                        disabled
+                        required
                       />
                     </div>
                     <div className="space-y-2">
@@ -115,9 +189,10 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                       </label>
                       <Input
                         id="lastName"
+                        name="lastName"
                         placeholder="Doe"
                         className="w-full text-black"
-                        disabled
+                        required
                       />
                     </div>
                   </div>
@@ -131,10 +206,11 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                     </label>
                     <Input
                       id="signupEmail"
+                      name="email"
                       type="email"
                       placeholder="your@email.com"
                       className="w-full text-black"
-                      disabled
+                      required
                     />
                   </div>
 
@@ -147,10 +223,11 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                     </label>
                     <Input
                       id="signupPassword"
+                      name="password"
                       type="password"
                       placeholder="••••••••"
                       className="w-full text-black"
-                      disabled
+                      required
                     />
                   </div>
 
@@ -163,22 +240,23 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                     </label>
                     <Input
                       id="confirmPassword"
+                      name="confirmPassword"
                       type="password"
                       placeholder="••••••••"
                       className="w-full text-black"
-                      disabled
+                      required
                     />
                   </div>
-                </div>
 
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                  <Button
-                    className="w-full bg-primary-600 hover:bg-secondary-700 transition-colors duration-300 opacity-50 cursor-not-allowed"
-                    disabled
-                  >
-                    Sign Up
-                  </Button>
-                </motion.div>
+                  <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                    <Button
+                      type="submit"
+                      className="w-full bg-primary-600 hover:bg-secondary-700 transition-colors duration-300"
+                    >
+                      Sign Up
+                    </Button>
+                  </motion.div>
+                </form>
 
                 <div className="relative flex items-center justify-center">
                   <span className="bg-white px-2 text-sm text-gray-500">
