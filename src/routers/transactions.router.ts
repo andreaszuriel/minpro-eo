@@ -1,4 +1,3 @@
-// src/routes/transaction.router.ts
 import { Router } from 'express';
 import { TransactionController } from '../controllers/transactions.controller';
 import { AuthenticationMiddleware } from '../middlewares/authentication.middleware';

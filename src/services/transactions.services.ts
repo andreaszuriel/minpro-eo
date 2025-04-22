@@ -1,4 +1,3 @@
-// src/services/transaction.service.ts
 import { PrismaClient, TransactionStatus } from '@prisma/client';
 import { TransactionInput, TransactionPayload } from '../models/interface';
 import { generateVoucher } from '../utils/generateVouceher';

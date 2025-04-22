@@ -1,5 +1,3 @@
-// src/services/eventService.ts
-
 import { PrismaClient } from '@prisma/client';
 import { EventInput, EventPayload } from '../models/interface';
 

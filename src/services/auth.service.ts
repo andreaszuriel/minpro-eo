@@ -1,5 +1,3 @@
-// src/services/auth.service.ts
-
 import { prisma } from '../prisma/client';
 import { RegisterInput } from '../models/interface';
 import bcrypt from 'bcrypt';

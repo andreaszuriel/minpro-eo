@@ -1,4 +1,3 @@
-// src/controllers/transaction.controller.ts
 import { Request, Response } from 'express';
 import { TransactionService } from '../services/transactions.services';
 const svc = new TransactionService();
