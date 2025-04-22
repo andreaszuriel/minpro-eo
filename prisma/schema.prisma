@@ -53,17 +53,32 @@ model Event {
 }
 
 model Transaction {
-  id             Int       @id @default(autoincrement())
-  userId         Int
-  eventId        Int
-  ticketQuantity Int
-  finalPrice     Int
-  status         String
-  paymentProof   String?   // Returns string or null
-  createdAt      DateTime  @default(now())
-  
-  user           User      @relation(fields: [userId], references: [id])
-  event          Event     @relation(fields: [eventId], references: [id])
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  eventId          Int
+  tierType         String
+  ticketQuantity   Int
+  basePrice        Int       // per‑ticket price before discounts
+  couponDiscount   Int       @default(0)
+  pointsUsed       Int       @default(0)
+  finalPrice       Int
+  status           TransactionStatus @default(PENDING)
+  paymentProof     String?   // cloudinary URL
+  paymentDeadline  DateTime  // 3h after creation
+  voucherUrl       String?
+  ticketUrl        String?
+  createdAt        DateTime  @default(now())
+
+  user             User      @relation(fields: [userId], references: [id])
+  event            Event     @relation(fields: [eventId], references: [id])
+}
+
+enum TransactionStatus {
+  PENDING        // waiting for payment
+  WAITING_ADMIN  // payment proof uploaded
+  PAID           // admin approved
+  EXPIRED
+  CANCELED
 }
 
 model Review {
