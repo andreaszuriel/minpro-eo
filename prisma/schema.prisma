@@ -3,12 +3,169 @@ generator client {
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  directUrl  = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// --- Enums ---
+model User {
+  id             String          @id @default(cuid())
+  name           String?
+  email          String          @unique
+  password       String?
+  referredBy     String?
+  points         Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  role           UserRole        @default(customer)
+  emailVerified  DateTime?
+  image          String?
+  referralCode   String?         @unique
+  accounts       Account[]
+  authenticators Authenticator[]
+  coupons        Coupon[]
+  events         Event[]         @relation("OrganizerEvents")
+  reviews        Review[]
+  sessions       Session[]
+  transactions   Transaction[]
+
+  @@index([email])
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  id                String   @id @default(cuid())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  id         String   @id @default(cuid())
+
+  @@unique([identifier, token])
+}
+
+model Authenticator {
+  credentialID         String   @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+  createdAt            DateTime @default(now())
+  id                   String   @id @default(cuid())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Event {
+  id            Int           @id @default(autoincrement())
+  title         String
+  genre         String
+  startDate     DateTime
+  endDate       DateTime
+  location      String
+  seats         Int
+  tiers         Json
+  image         String?
+  description   String?
+  organizerId   String
+  averageRating Float?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  price         Json
+  organizer     User          @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  reviews       Review[]
+  transactions  Transaction[]
+
+  @@index([organizerId])
+}
+
+model Transaction {
+  id              Int               @id @default(autoincrement())
+  userId          String
+  eventId         Int
+  ticketQuantity  Int
+  finalPrice      Int
+  paymentProof    String?
+  createdAt       DateTime          @default(now())
+  basePrice       Int
+  couponDiscount  Int               @default(0)
+  paymentDeadline DateTime
+  pointsUsed      Int               @default(0)
+  ticketUrl       String?
+  tierType        String
+  voucherUrl      String?
+  status          TransactionStatus @default(PENDING)
+  updatedAt       DateTime          @updatedAt
+  event           Event             @relation(fields: [eventId], references: [id])
+  user            User              @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([eventId])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  eventId   Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+}
+
+model Coupon {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  userId    String
+  discount  Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
 
 enum UserRole {
   customer
@@ -21,175 +178,4 @@ enum TransactionStatus {
   PAID
   EXPIRED
   CANCELED
-}
-
-// --- Auth.js Models ---
-
-model User {
-  id            String          @id @default(cuid())
-  name          String?
-  email         String          @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  referralCode  String?         @unique
-  referredBy    String?
-  points        Int             @default(0)
-  role          UserRole        @default(customer)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-
-  accounts      Account[]
-  sessions      Session[]
-  authenticators Authenticator[]
-  coupons       Coupon[]
-  events        Event[]         @relation("OrganizerEvents")
-  reviews       Review[]
-  transactions  Transaction[]
-
-  @@index([email])
-}
-
-model Account {
-  id                String   @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?  @db.Text
-  access_token      String?  @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?  @db.Text
-  session_state     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@index([userId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model VerificationToken {
-  id         String   @id @default(cuid())
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-model Authenticator {
-  id                   String  @id @default(cuid())
-  credentialID         String  @unique
-  userId               String
-  providerAccountId    String
-  credentialPublicKey  String
-  counter              Int
-  credentialDeviceType String
-  credentialBackedUp   Boolean
-  transports           String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-// --- Application Models ---
-
-model Event {
-  id            Int       @id @default(autoincrement())
-  title         String
-  genre         String
-  startDate     DateTime
-  endDate       DateTime
-  location      String
-  seats         Int
-  tiers         Json
-  price         Json
-  image         String?
-  description   String?
-  organizerId   String
-  averageRating Float?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  organizer     User      @relation("OrganizerEvents", fields: [organizerId], references: [id])
-  reviews       Review[]
-  transactions  Transaction[]
-
-  @@index([organizerId])
-}
-
-model Transaction {
-  id               Int               @id @default(autoincrement())
-  userId           String
-  eventId          Int
-  tierType         String
-  ticketQuantity   Int
-  basePrice        Int
-  couponDiscount   Int               @default(0)
-  pointsUsed       Int               @default(0)
-  finalPrice       Int
-  status           TransactionStatus @default(PENDING)
-  paymentProof     String?
-  paymentDeadline  DateTime
-  voucherUrl       String?
-  ticketUrl        String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-
-  user             User              @relation(fields: [userId], references: [id])
-  event            Event             @relation(fields: [eventId], references: [id])
-
-  @@index([userId])
-  @@index([eventId])
-}
-
-model Review {
-  id        Int       @id @default(autoincrement())
-  userId    String
-  eventId   Int
-  rating    Int
-  comment   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  user      User      @relation(fields: [userId], references: [id])
-  event     Event     @relation(fields: [eventId], references: [id])
-
-  @@unique([userId, eventId])
-  @@index([userId])
-  @@index([eventId])
-}
-
-model Coupon {
-  id         Int       @id @default(autoincrement())
-  code       String    @unique
-  userId     String
-  discount   Int
-  expiresAt  DateTime
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  user       User      @relation(fields: [userId], references: [id])
-
-  @@index([userId])
 }

@@ -41,23 +41,37 @@ export const authConfig = {
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
+                // Check existence first
                 if (!credentials?.email || !credentials?.password) {
                     throw new Error("Email and password are required.");
                 }
-
+            
+                // Explicitly check types (Type Guard)
+                if (typeof credentials.email !== 'string' || typeof credentials.password !== 'string') {
+                     throw new Error("Invalid credentials format.");
+                }
+            
+                // --- From here, TS knows they are strings ---
+            
                 const user = await prisma.user.findUnique({
                     where: { email: credentials.email },
                 });
-
+            
                 if (!user || !user.password) {
                     throw new Error("Invalid credentials.");
                 }
-
+            
+               
+                if (user.password === null) {
+                     throw new Error("User account issue: Password not set.");
+                }
+            
+                
                 const isValid = await verifyPassword(credentials.password, user.password);
                 if (!isValid) {
                     throw new Error("Invalid credentials.");
                 }
-
+            
                 return { id: user.id, email: user.email, name: user.name, role: user.role };
             },
         }),
