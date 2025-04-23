@@ -2,51 +2,49 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
+  console.log("MIDDLEWARE: Checking authentication for path:", request.nextUrl.pathname);
+  
   const token = await getToken({
     req: request,
-    secret: process.env.NEXTAUTH_SECRET, // Add the secret here
+    secret: process.env.NEXTAUTH_SECRET,
   });
+  
+  console.log("MIDDLEWARE: Token exists?", !!token);
+  console.log("MIDDLEWARE: Cookie:", request.cookies.get("next-auth.session-token")?.value?.substring(0, 5) + "..." || 
+               request.cookies.get("__Secure-next-auth.session-token")?.value?.substring(0, 5) + "...");
 
-  // Path is being accessed
   const { pathname } = request.nextUrl;
 
-  // Define public paths that don't require authentication
   const isPublicPath = [
     "/",
     "/auth/signin",
     "/auth/verify-request",
   ].includes(pathname);
 
-  // Define API paths
   const isApiPath = pathname.startsWith("/api");
 
-  // Define static resource paths
   const isStaticResourcePath = [
     "/_next/",
     "/favicon.ico",
     "/images/",
   ].some((path) => pathname.startsWith(path));
 
-  // If it's a public path or static resource, allow access
   if (isPublicPath || isApiPath || isStaticResourcePath) {
+    console.log("MIDDLEWARE: Allowing access to public/static path:", pathname);
     return NextResponse.next();
   }
 
-  // Check if user is authenticated
   if (!token) {
-    // Redirect to sign-in page if not authenticated
+    console.log("MIDDLEWARE: No token, redirecting to signin");
     return NextResponse.redirect(new URL("/auth/signin", request.url));
   }
 
-  // Allow access for authenticated users
+  console.log("MIDDLEWARE: Token valid, allowing access");
   return NextResponse.next();
 }
 
-// Apply middleware only to specific paths
 export const config = {
   matcher: [
     "/((?!api|_next/static|_next/image|favicon.ico|auth/signin|auth/verify-request|^/$).*)",
   ],
-
-  
 };

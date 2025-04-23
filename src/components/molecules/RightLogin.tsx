@@ -28,29 +28,31 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
 
   // --- Updated Submit Handler for Credentials Login ---
   const handleCredentialsSubmit = async (formData: FormData) => {
-    setIsLoading(true); // Start loading
-    setError(null);     // Clear previous errors
+    setIsLoading(true);
+    setError(null);
+    
     try {
       // Call the server action
       const result = await handleCredentialsLogin(formData);
-
-      // Check if the server action returned an error object
+      
+      if (result?.success && result.url) {
+        // Handle successful login - use router for client-side navigation
+        window.location.href = result.url;
+        return;
+      }
+      
+      // If there's an error, display it
       if (result?.error) {
         setError(result.error);
+        setIsLoading(false);
       }
-      // If successful, the server action's redirect (triggered by signIn)
-      // will automatically navigate the user. No explicit success handling needed here.
-
-    } catch (err) {
-      // Catch unexpected errors (network, etc.) or errors re-thrown by the action
-      // (though NEXT_REDIRECT should ideally not be caught here if handled correctly in the action)
-      console.error("Client-side Credentials Submit Error:", err);
+    } catch (error: any) {
+      // Handle unexpected errors
+      console.error("Login error:", error);
       setError("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsLoading(false); // Stop loading regardless of outcome
+      setIsLoading(false);
     }
   };
-
   // --- Updated Submit Handler for Signup ---
   const handleSignupSubmit = async (formData: FormData) => {
     setIsLoading(true); // Start loading

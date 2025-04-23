@@ -29,41 +29,38 @@ export async function handleMagicLinkLogin(formData: FormData) {
   }
   // signIn should redirect or throw, so this point might not be reached
 }
-
 export async function handleCredentialsLogin(formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
 
   if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
-     return { error: "Email and password are required." }; // Return error object
+    return { error: "Email and password are required." };
   }
 
   try {
-     // Let redirects propagate
-    await signIn("credentials", { email, password, redirectTo: "/" });
-    // If signIn *doesn't* throw/redirect (unlikely with redirectTo),
-    // you might need a return here, but usually not needed.
+    console.log("CREDENTIALS LOGIN: Attempting signIn for email:", email);
+    
+    const result = await signIn("credentials", { 
+      email, 
+      password, 
+      redirect: false
+    });
+    
+    console.log("CREDENTIALS LOGIN: signIn result:", result);
+    
+    // Check if authentication was successful by looking at result.ok
+    if (result?.ok) {
+      // Return the URL to redirect to
+      return { success: true, url: "/" };
+    } else {
+      // Authentication failed
+      return { error: result?.error || "Authentication failed" };
+    }
   } catch (error) {
-     // Check if it's the redirect error specifically
-     if ((error as any)?.digest?.startsWith('NEXT_REDIRECT')) {
-       throw error; // Re-throw NEXT_REDIRECT errors immediately
-     }
-
-    // If it's not a redirect, it's likely an AuthError (CredentialsSignin, etc.)
-    // Or a custom error thrown from your authorize function
-    console.error("Credentials Sign-In Caught Error:", error); // Log the actual error
-
-    // You can check specific AuthError types if using v5+
-    // if (error instanceof AuthError && error.type === 'CredentialsSignin') {
-    //   return { error: 'Invalid email or password.' };
-    // }
-
-    // Return a generic error message or the specific one if safe
-    // Be careful about exposing too much detail from error.message
-    return { error: "Invalid email or password." }; // Return error object
+    console.error("Credentials Login Error:", error);
+    return { error: "Invalid email or password." };
   }
 }
-
 export async function handleSignup(formData: FormData) {
   const firstName = formData.get("firstName");
   const lastName = formData.get("lastName");

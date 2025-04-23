@@ -6,6 +6,8 @@ import Credentials from "next-auth/providers/credentials";
 import { saltAndHashPassword, verifyPassword } from "@/utils/password"; // Adjust path if needed
 import { prisma } from "@/lib/prisma"; // Adjust path if needed
 import { UserRole } from '@prisma/client'; // Make sure UserRole is imported from Prisma
+import crypto from 'crypto';
+import { cookies } from 'next/headers';
 
 // Check for required environment variables
 if (!process.env.EMAIL_SERVER_USER) {
@@ -64,16 +66,15 @@ export const authConfig = {
                     console.log(`AUTHORIZE: User not found for email: ${credentials.email}`);
                     throw new Error("Invalid credentials."); // User not found
                 }
-                 if (!user.password) {
+                if (!user.password) {
                     console.log(`AUTHORIZE: User ${credentials.email} has no password set.`);
-                     throw new Error("Invalid credentials."); // Password not set
-                 }
+                    throw new Error("Invalid credentials."); // Password not set
+                }
 
                 if (user.password === null) { // Redundant check if !user.password is above, but safe
                     console.log(`AUTHORIZE: User ${credentials.email} password is null.`);
-                     throw new Error("User account issue: Password not set.");
+                    throw new Error("User account issue: Password not set.");
                 }
-
 
                 const isValid = await verifyPassword(credentials.password, user.password); // No 'as string' needed
                 if (!isValid) {
@@ -87,80 +88,48 @@ export const authConfig = {
             },
         }),
     ],
-    session: { strategy: "database" }, // Ensures adapter is used for session management
+    session: { 
+        strategy: "jwt", // Changed from "database" to "jwt"
+        maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+        updateAge: 24 * 60 * 60,   // 24 hours in seconds
+    },
     pages: {
         signIn: '/auth/signin',
         verifyRequest: '/auth/verify-request', // For Magic Link
         error: '/auth/error', // To display authentication errors
     },
     callbacks: {
-        // --- ADDED signIn Callback ---
-        async signIn({ user, account, profile, email, credentials }) {
-            // This callback runs after authorize() for Credentials provider
-            // 'user' here is the object returned successfully from authorize
-            console.log(`SIGNIN CALLBACK: Provider=${account?.provider}. Attempting sign-in for user ID: ${user.id}`);
-
-            // Example: Check if email is verified (requires 'emailVerified' field on User model)
-            // const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { emailVerified: true } });
-            // if (account?.provider === "credentials" && !dbUser?.emailVerified) {
-            //     console.log(`SIGNIN CALLBACK: Denied for ${user.id} - Email not verified`);
-            //     // Optionally redirect to a specific page:
-            //     // return '/auth/verify-email-notice';
-            //     // Or simply deny sign-in:
-            //     return false;
-            // }
-
-            // Return true to allow the sign-in process to continue fully.
-            // This seems necessary to trigger database session creation for Credentials.
-            console.log(`SIGNIN CALLBACK: Allowing sign-in for user ID: ${user.id}`);
+        async jwt({ token, user, account }) {
+            // Keep the user ID and role in the token
+            if (user) {
+                token.id = user.id;
+                token.email = user.email;
+                token.name = user.name;
+                token.role = user.role;
+            }
+            return token;
+        },
+        async session({ session, token, user }) {
+            // For JWT strategy, use token instead of user
+            if (token) {
+                session.user.id = token.id as string;
+                session.user.email = token.email as string;
+                session.user.name = token.name as string;
+                session.user.role = token.role as UserRole || 'customer';
+            } else if (user) {
+                // For backward compatibility with database strategy
+                session.user.id = user.id;
+                session.user.email = user.email;
+                session.user.name = user.name;
+                session.user.role = user.role;
+            }
+            console.log(`SESSION CALLBACK: Final session object:`, JSON.stringify(session));
+            return session;
+        },
+        async signIn({ user, account, profile }) {
+            console.log("SIGNIN CALLBACK with account provider:", account?.provider);
+            // Successfully signed in
             return true;
         },
-
-        // --- UPDATED session Callback ---
-        async session({ session, user /* 'user' comes from adapter lookup based on session token */ }) {
-            // Use session.sessionToken to identify the session
-            console.log(`SESSION CALLBACK: Populating session. Session Token: ${session.sessionToken ?? 'N/A'}, User ID from token/lookup: ${user.id}`);
-
-            // Add custom properties from the user object (fetched by adapter) to the session.user
-            session.user.id = user.id;
-            session.user.email = user.email; // Ensure email is included
-            session.user.name = user.name;   // Ensure name is included
-
-            // Handle 'role' - Check if it exists on the 'user' object passed in
-            if (user.role) {
-                session.user.role = user.role;
-            } else {
-                // Fallback logic... (keep as before)
-                console.warn(`SESSION CALLBACK: Role missing on user object for ID ${user.id}. Fetching directly.`);
-                try {
-                    const dbUser = await prisma.user.findUnique({
-                        where: { id: user.id },
-                        select: { role: true }
-                    });
-                    session.user.role = dbUser?.role ?? UserRole.customer; // Use fetched role or default
-                } catch (dbError) {
-                    console.error(`SESSION CALLBACK: Error fetching role directly for user ${user.id}`, dbError);
-                    session.user.role = UserRole.customer; // Default on error
-                }
-            }
-             console.log(`SESSION CALLBACK: Final session object for user ${user.id}:`, JSON.stringify(session)); // Log final session object
-            return session; // Return the modified session object
-        },
-
-        // JWT callback is generally used for "jwt" strategy, not "database"
-        // async jwt({ token, user, account, profile }) {
-        //   console.log("JWT CALLBACK:", { token, user, account });
-        //   if (user) { // On sign in
-        //     token.id = user.id;
-        //     token.role = user.role;
-        //   }
-        //   return token;
-        // }
     },
-    // The adapter itself is configured in the main auth.ts file, not here in auth.config.ts
-    // adapter: PrismaAdapter(prisma), // DO NOT PUT ADAPTER HERE
-
-    // Optional: Add debug flag for more verbose next-auth internal logs
-    // debug: process.env.NODE_ENV === 'development',
-
 } satisfies NextAuthConfig;
