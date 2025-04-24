@@ -19,6 +19,7 @@ export async function middleware(request: NextRequest) {
     "/",
     "/auth/signin",
     "/auth/verify-request",
+    "/auth/eo-login",
   ].includes(pathname);
 
   const isApiPath = pathname.startsWith("/api");

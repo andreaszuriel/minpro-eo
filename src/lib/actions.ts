@@ -1,36 +1,31 @@
-// lib/actions.ts
 "use server";
 
 import { signIn } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { saltAndHashPassword } from "@/utils/password";
-// Import AuthError if available/needed for more specific checks (V5+)
-// import { AuthError } from "next-auth";
+import { AuthError } from "next-auth";
 
 export async function handleMagicLinkLogin(formData: FormData) {
   const email = formData.get("email");
 
   if (!email || typeof email !== 'string') {
-    return { error: "Email is required and must be a string." }; // Return error object
+    return { error: "Email is required and must be a string." }; 
   }
 
   try {
     // Let redirects propagate
     await signIn("nodemailer", { email, redirectTo: "/auth/verify-request" });
   } catch (error) {
-    // Check if it's the redirect error specifically
-    // Using digest is a common way for NEXT_REDIRECT
     if ((error as any)?.digest?.startsWith('NEXT_REDIRECT')) {
-       throw error; // Re-throw NEXT_REDIRECT errors immediately
+       throw error; 
     }
     // Handle other errors (like network issues, config errors)
     console.error("Magic Link Sign-In Error:", error);
-    return { error: "Could not send magic link. Please try again." }; // Return error object
+    return { error: "Could not send magic link. Please try again." }; 
   }
-  // signIn should redirect or throw, so this point might not be reached
+
 }
 
-// lib/actions.ts - Updated function
 export async function handleCredentialsLogin(formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
@@ -41,8 +36,6 @@ export async function handleCredentialsLogin(formData: FormData) {
 
   try {
     console.log("CREDENTIALS LOGIN: Attempting signIn for email:", email);
-    
-    // We need to use redirect:false to capture the result and handle it ourselves
     const result = await signIn("credentials", { 
       email, 
       password,
@@ -111,15 +104,14 @@ export async function handleSignup(formData: FormData) {
   } catch (error) {
      // Check if it's the redirect error specifically
      if ((error as any)?.digest?.startsWith('NEXT_REDIRECT')) {
-       throw error; // Re-throw NEXT_REDIRECT errors immediately
+       throw error; 
      }
 
     // Handle database errors or other unexpected issues during signup/signin
     console.error("Signup Process Error:", error);
 
     // Check if it's an error during the sign-in attempt after creation
-    // You might want different messages depending on where the error occurred
-    if (error instanceof Error && error.message.includes("CredentialsSignin")) { // Example check
+    if (error instanceof Error && error.message.includes("CredentialsSignin")) { 
         return { error: "Account created, but auto sign-in failed. Please log in manually."}
     }
 

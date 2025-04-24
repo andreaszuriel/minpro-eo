@@ -90,22 +90,21 @@ export default function Navbar() {
     [setSearchQuery]
   );
 
-  // Shared nav links component
+    // Shared nav links component
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <div className={mobile ? 'grid grid-cols-2 gap-4' : 'flex items-center space-x-6'}>
       {[
         { href: '/concerts', label: 'Concerts', icon: Ticket },
         { href: '/venues', label: 'Venues', icon: MapPin },
         { href: '/artists', label: 'Artists', icon: Music },
-        ...(status === 'authenticated' && mobile ? [{ href: '/tickets', label: 'My Tickets', icon: Ticket }] : []),
+        ...(status === 'authenticated' && mobile && session?.user?.id
+          ? [{ href: `/dashboard/${session.user.id}`, label: 'My Profile', icon: User }]
+          : []),
       ].map(({ href, label, icon: Icon }) => (
-        <Link
-          key={href}
-          href={href}
-          className={mobile 
+        <Link key={href} href={href} className={mobile 
             ? `flex items-center p-3 rounded-lg ${isScrolled ? 'bg-slate-50 text-primary-700' : 'bg-primary-400 text-white'}`
-            : `font-medium hover:text-tertiary-500 transition-colors relative group`}
-        >
+            : `font-medium hover:text-tertiary-500 transition-colors relative group`
+          }>
           {mobile && <Icon className="h-5 w-5 mr-2" />}
           <span className={mobile ? 'font-medium' : ''}>{label}</span>
           {!mobile && (
@@ -117,6 +116,7 @@ export default function Navbar() {
       ))}
     </div>
   );
+
 
   // Shared filter dropdown component
   const FilterDropdown = ({
@@ -205,14 +205,7 @@ export default function Navbar() {
             <User className="h-4 w-4 mr-2" />
             Profile
           </Link>
-          <Link 
-            href="/tickets" 
-            className="flex items-center w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700"
-            onClick={closeMobileMenu}
-          >
-            <Ticket className="h-4 w-4 mr-2" />
-            My Tickets
-          </Link>
+        
           <button 
             onClick={() => {
               signOut({ callbackUrl: '/' });

@@ -1,5 +1,3 @@
-// auth.config.ts
-
 import type { NextAuthConfig } from 'next-auth';
 import Nodemailer from "next-auth/providers/nodemailer";
 import Credentials from "next-auth/providers/credentials";
@@ -87,19 +85,18 @@ export const authConfig = {
         }),
     ],
     session: { 
-        strategy: "jwt", // Changed from "database" to "jwt"
-        maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
-        updateAge: 24 * 60 * 60,   // 24 hours in seconds
+        strategy: "jwt", 
+        maxAge: 30 * 24 * 60 * 60, 
+        updateAge: 24 * 60 * 60,   
     },
     pages: {
         signIn: '/auth/signin',
         verifyRequest: '/auth/verify-request', // For Magic Link
         signOut: '/auth/verify-signin',
-        error: '/auth/error', // To display authentication errors
+        error: '/auth/error', 
     },
     callbacks: {
         async jwt({ token, user, account }) {
-            // Keep the user ID and role in the token
             if (user) {
                 token.id = user.id;
                 token.email = user.email;
@@ -127,7 +124,6 @@ export const authConfig = {
         },
         async signIn({ user, account, profile }) {
             console.log("SIGNIN CALLBACK with account provider:", account?.provider);
-            // Successfully signed in
             return true;
         },
     },
