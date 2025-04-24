@@ -6,6 +6,7 @@ import {
   Ticket, LogOut, Calendar, X, Menu 
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { debounce } from '../../utils/debounce';
 import { concertList } from '../data/concertlist';
@@ -30,6 +31,7 @@ interface FilterDropdownProps {
 }
 
 export default function Navbar() {
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -90,7 +92,14 @@ export default function Navbar() {
     [setSearchQuery]
   );
 
-    // Shared nav links component
+    // Navigation handler using router
+    const handleNavigation = (href: string) => {
+      router.push(href);
+      setShowUserMenu(false);
+      setIsMobileMenuOpen(false);
+    };  
+  
+  // Shared nav links component
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <div className={mobile ? 'grid grid-cols-2 gap-4' : 'flex items-center space-x-6'}>
       {[
@@ -101,10 +110,14 @@ export default function Navbar() {
           ? [{ href: `/dashboard/${session.user.id}`, label: 'My Profile', icon: User }]
           : []),
       ].map(({ href, label, icon: Icon }) => (
-        <Link key={href} href={href} className={mobile 
+        <button
+          key={href}
+          onClick={() => handleNavigation(href)}
+          className={mobile 
             ? `flex items-center p-3 rounded-lg ${isScrolled ? 'bg-slate-50 text-primary-700' : 'bg-primary-400 text-white'}`
-            : `font-medium hover:text-tertiary-500 transition-colors relative group`
-          }>
+            : `font-medium hover:text-tertiary-500 transition-colors relative group text-left`
+          }
+        >
           {mobile && <Icon className="h-5 w-5 mr-2" />}
           <span className={mobile ? 'font-medium' : ''}>{label}</span>
           {!mobile && (
@@ -112,7 +125,7 @@ export default function Navbar() {
               className={`absolute -bottom-1 left-0 w-0 h-0.5 ${isScrolled ? 'bg-tertiary-500' : 'bg-secondary-400'} transition-all duration-300 group-hover:w-full`}
             />
           )}
-        </Link>
+        </button>
       ))}
     </div>
   );
@@ -197,14 +210,13 @@ export default function Navbar() {
             <p className="font-medium text-primary-700">{session.user?.name || 'User'}</p>
             <p className="text-sm text-gray-500">{session.user?.email}</p>
           </div>
-          <Link 
-            href="/dashboard" 
+          <button 
+            onClick={() => handleNavigation(`/dashboard/${session.user?.id}`)}
             className="flex items-center w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700"
-            onClick={closeMobileMenu}
           >
             <User className="h-4 w-4 mr-2" />
             Profile
-          </Link>
+          </button>
         
           <button 
             onClick={() => {
@@ -220,28 +232,26 @@ export default function Navbar() {
         </>
       ) : (
         <>
-          <Link 
-            href="/login" 
+          <button 
+            onClick={() => handleNavigation('/login')}
             className="flex items-center justify-between w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700"
-            onClick={closeMobileMenu}
           >
             <span className="flex items-center">
               <LogIn className="h-4 w-4 mr-2" />
               Log In
             </span>
             <ArrowUpRight className="h-3 w-3" />
-          </Link>
-          <Link 
-            href="/register" 
+          </button>
+          <button 
+            onClick={() => handleNavigation('/register')}
             className="flex items-center justify-between w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700 border-t border-slate-100"
-            onClick={closeMobileMenu}
           >
             <span className="flex items-center">
               <User className="h-4 w-4 mr-2" />
               Create Account
             </span>
             <ArrowUpRight className="h-3 w-3" />
-          </Link>
+          </button>
         </>
       )}
     </div>
@@ -259,13 +269,15 @@ export default function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 hidden md:block">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center">
+          <button 
+            onClick={() => handleNavigation('/')} 
+            className="flex items-center"
+          >
             <Calendar className={`h-4 w-4 mr-2 ${isScrolled ? 'text-primary-700' : 'text-white'}`} />
             <span className="text-2xl font-bold font-brand tracking-tight">
               live<span className={`${isScrolled ? 'text-tertiary-500' : 'text-secondary-400'}`}>wave</span>
             </span>
-          </Link>
-
+          </button>
           {/* Navigation and Filters */}
           <div className="hidden lg:flex items-center space-x-6">
             <NavLinks />
