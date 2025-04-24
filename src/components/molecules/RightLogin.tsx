@@ -111,7 +111,7 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   setIsLoading(true);
                   setError(null);
                   try {
-                    const result = await import("@/lib/actions").then(m => m.handleSignup)(formData);
+                    const result = await (await import("@/lib/actions").then(m => m.handleSignup))(formData);
                     if (result?.error) {
                       setError(result.error);
                     }

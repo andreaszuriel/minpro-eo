@@ -3,11 +3,9 @@
 import type { NextAuthConfig } from 'next-auth';
 import Nodemailer from "next-auth/providers/nodemailer";
 import Credentials from "next-auth/providers/credentials";
-import { saltAndHashPassword, verifyPassword } from "@/utils/password"; // Adjust path if needed
-import { prisma } from "@/lib/prisma"; // Adjust path if needed
-import { UserRole } from '@prisma/client'; // Make sure UserRole is imported from Prisma
-import crypto from 'crypto';
-import { cookies } from 'next/headers';
+import { saltAndHashPassword, verifyPassword } from "@/utils/password"; 
+import { prisma } from "@/lib/prisma";
+import { UserRole } from '@prisma/client'; 
 
 // Check for required environment variables
 if (!process.env.EMAIL_SERVER_USER) {
@@ -96,6 +94,7 @@ export const authConfig = {
     pages: {
         signIn: '/auth/signin',
         verifyRequest: '/auth/verify-request', // For Magic Link
+        signOut: '/auth/verify-signin',
         error: '/auth/error', // To display authentication errors
     },
     callbacks: {

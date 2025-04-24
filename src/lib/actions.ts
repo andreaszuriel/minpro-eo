@@ -1,4 +1,4 @@
-// lib/actions.ts (Corrected)
+// lib/actions.ts
 "use server";
 
 import { signIn } from "@/auth";
@@ -16,7 +16,7 @@ export async function handleMagicLinkLogin(formData: FormData) {
 
   try {
     // Let redirects propagate
-    await signIn("nodemailer", { email, redirectTo: "/" });
+    await signIn("nodemailer", { email, redirectTo: "/auth/verify-request" });
   } catch (error) {
     // Check if it's the redirect error specifically
     // Using digest is a common way for NEXT_REDIRECT
@@ -29,6 +29,8 @@ export async function handleMagicLinkLogin(formData: FormData) {
   }
   // signIn should redirect or throw, so this point might not be reached
 }
+
+// lib/actions.ts - Updated function
 export async function handleCredentialsLogin(formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
@@ -40,27 +42,28 @@ export async function handleCredentialsLogin(formData: FormData) {
   try {
     console.log("CREDENTIALS LOGIN: Attempting signIn for email:", email);
     
+    // We need to use redirect:false to capture the result and handle it ourselves
     const result = await signIn("credentials", { 
       email, 
-      password, 
+      password,
       redirect: false
     });
     
     console.log("CREDENTIALS LOGIN: signIn result:", result);
     
-    // Check if authentication was successful by looking at result.ok
-    if (result?.ok) {
-      // Return the URL to redirect to
-      return { success: true, url: "/" };
+    // Check if authentication was successful - result.error will be present if failed
+    if (result?.error) {
+      return { error: result.error };
     } else {
-      // Authentication failed
-      return { error: result?.error || "Authentication failed" };
+      // Success! Return a redirectUrl that the client will use
+      return { success: true, redirectUrl: "/auth/verify-signin" };
     }
   } catch (error) {
     console.error("Credentials Login Error:", error);
     return { error: "Invalid email or password." };
   }
 }
+
 export async function handleSignup(formData: FormData) {
   const firstName = formData.get("firstName");
   const lastName = formData.get("lastName");
@@ -102,7 +105,7 @@ export async function handleSignup(formData: FormData) {
 
     // --- Start: Attempt Auto Sign-In ---
     // Let redirects propagate from signIn
-    await signIn("credentials", { email, password, redirectTo: "/" });
+    await signIn("credentials", { email, password, redirectTo: "/auth/verify-signin" });
     // --- End: Attempt Auto Sign-In ---
 
   } catch (error) {
