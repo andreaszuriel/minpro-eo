@@ -209,6 +209,23 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                       required
                       disabled={isLoading}
                     />
+
+<div className="space-y-2">
+  <label
+    htmlFor="referrerCode"
+    className="text-sm font-medium text-black"
+  >
+    Referral Code (optional)
+  </label>
+  <input
+    id="referrerCode"
+    name="referrerCode"
+    type="text"
+    placeholder="Enter referral code"
+    className="w-full text-black border-gray-300 rounded-md p-2"
+    disabled={isLoading}
+  />
+</div>
                   </div>
 
                   <motion.div whileHover={{ scale: isLoading ? 1 : 1.03 }} whileTap={{ scale: isLoading ? 1 : 0.97 }}>

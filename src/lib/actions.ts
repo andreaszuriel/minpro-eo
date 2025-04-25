@@ -63,13 +63,14 @@ export async function handleSignup(formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
   const confirmPassword = formData.get("confirmPassword");
+  const referrerCode = formData.get("referrerCode"); // optional
 
-  // --- Start: Input Validation ---
   if (
     !firstName || !lastName || !email || !password || !confirmPassword ||
     typeof firstName !== 'string' || typeof lastName !== 'string' ||
     typeof email !== 'string' || typeof password !== 'string' ||
-    typeof confirmPassword !== 'string'
+    typeof confirmPassword !== 'string' ||
+    (referrerCode && typeof referrerCode !== 'string')
   ) {
     return { error: "All fields are required." };
   }
@@ -77,42 +78,80 @@ export async function handleSignup(formData: FormData) {
   if (password !== confirmPassword) {
     return { error: "Passwords do not match." };
   }
-  // --- End: Input Validation ---
 
   try {
-    // --- Start: Database Operations ---
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return { error: "User with this email already exists." };
     }
 
+    // Check referral code validity
+    let referrerId: string | null = null;
+    if (referrerCode) {
+      const referrer = await prisma.user.findUnique({ where: { referralCode: referrerCode } });
+      if (!referrer) {
+        return { error: "Invalid referral code." };
+      }
+      referrerId = referrer.id;
+    }
+
+    // Generate unique referral code
+    const { customAlphabet } = await import("nanoid");
+    const generateReferralCode = customAlphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 6);
+    let referralCode: string;
+    while (true) {
+      referralCode = generateReferralCode();
+      const existing = await prisma.user.findUnique({ where: { referralCode } });
+      if (!existing) break;
+    }
+
     const hashedPassword = await saltAndHashPassword(password);
-    await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         name: `${firstName} ${lastName}`,
         email,
         password: hashedPassword,
+        referralCode,
+        referredBy: referrerCode || null,
       },
     });
-    // --- End: Database Operations ---
 
-    // --- Start: Attempt Auto Sign-In ---
-    // Let redirects propagate from signIn
-    await signIn("credentials", { email, password, redirectTo: "/auth/verify-signin" });
-    // --- End: Attempt Auto Sign-In ---
+    // Give the new user a coupon
+    await prisma.coupon.create({
+      data: {
+        userId: newUser.id,
+        code: `WELCOME-${referralCode}`,
+        discount: 20000,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
+      },
+    });
+
+    // Reward the referrer
+    if (referrerId) {
+      await prisma.user.update({
+        where: { id: referrerId },
+        data: {
+          points: { increment: 10000 },
+        },
+      });
+    }
+
+    // Attempt auto sign-in
+    await signIn("credentials", {
+      email,
+      password,
+      redirectTo: "/auth/verify-signin",
+    });
 
   } catch (error) {
-     // Check if it's the redirect error specifically
-     if ((error as any)?.digest?.startsWith('NEXT_REDIRECT')) {
-       throw error; 
-     }
+    if ((error as any)?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw error;
+    }
 
-    // Handle database errors or other unexpected issues during signup/signin
     console.error("Signup Process Error:", error);
 
-    // Check if it's an error during the sign-in attempt after creation
-    if (error instanceof Error && error.message.includes("CredentialsSignin")) { 
-        return { error: "Account created, but auto sign-in failed. Please log in manually."}
+    if (error instanceof Error && error.message.includes("CredentialsSignin")) {
+      return { error: "Account created, but auto sign-in failed. Please log in manually." };
     }
 
     return { error: "An unexpected error occurred during signup. Please try again." };
