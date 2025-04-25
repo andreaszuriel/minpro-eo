@@ -1,114 +1,126 @@
-// pages/api/auth/[...nextauth].ts
-import NextAuth, { type NextAuthConfig, type User } from "next-auth";
-import NodemailerProvider from "next-auth/providers/nodemailer";
-import CredentialsProvider from "next-auth/providers/credentials";
+import type { NextAuthConfig } from 'next-auth';
+import Nodemailer from "next-auth/providers/nodemailer";
+import Credentials from "next-auth/providers/credentials";
+import { saltAndHashPassword, verifyPassword } from "@/utils/password"; 
 import { prisma } from "@/lib/prisma";
-import { verifyPassword } from "@/utils/password";
-import { UserRole } from "@prisma/client";
+import { UserRole } from '@prisma/client'; 
 
-// 1) Env checks
+// Check for required environment variables
 for (const name of [
-  "EMAIL_SERVER_USER",
-  "EMAIL_SERVER_PASSWORD",
-  "EMAIL_SERVER_HOST",
-  "EMAIL_SERVER_PORT",
-  "EMAIL_FROM",
-] as const) {
-  if (!process.env[name]) {
-    throw new Error(`Missing env var: ${name}`);
+    "EMAIL_SERVER_USER",
+    "EMAIL_SERVER_PASSWORD",
+    "EMAIL_SERVER_HOST",
+    "EMAIL_SERVER_PORT",
+    "EMAIL_FROM",
+  ] as const) {
+    if (!process.env[name]) {
+      throw new Error(`Missing env var: ${name}`);
+    }
   }
-}
 
-// 2) NextAuth config
-export const authConfig: NextAuthConfig = {
-  providers: [
-    // Magic‐link / email
-    NodemailerProvider({
-      server: {
-        host: process.env.EMAIL_SERVER_HOST,
-        port: Number(process.env.EMAIL_SERVER_PORT),
-        auth: {
-          user: process.env.EMAIL_SERVER_USER,
-          pass: process.env.EMAIL_SERVER_PASSWORD,
+// Base auth config without the Prisma adapter
+export const authConfig = {
+    providers: [
+        Nodemailer({
+            server: {
+                host: process.env.EMAIL_SERVER_HOST,
+                port: Number(process.env.EMAIL_SERVER_PORT),
+                auth: {
+                    user: process.env.EMAIL_SERVER_USER,
+                    pass: process.env.EMAIL_SERVER_PASSWORD,
+                }
+            },
+            from: process.env.EMAIL_FROM,
+        }),
+        Credentials({
+            credentials: {
+                email: { label: "Email", type: "email" },
+                password: { label: "Password", type: "password" },
+            },
+            async authorize(credentials) {
+                // Check existence first
+                if (!credentials?.email || !credentials?.password) {
+                    throw new Error("Email and password are required.");
+                }
+
+                // Explicitly check types (Type Guard) - use 'as string' if preferred after existence check
+                if (typeof credentials.email !== 'string' || typeof credentials.password !== 'string') {
+                     throw new Error("Invalid credentials format.");
+                }
+
+                console.log(`AUTHORIZE: Attempting for email: ${credentials.email}`); // Debug log
+
+                const user = await prisma.user.findUnique({
+                    where: { email: credentials.email }, // No 'as string' needed after typeof check
+                });
+
+                if (!user) {
+                    console.log(`AUTHORIZE: User not found for email: ${credentials.email}`);
+                    throw new Error("Invalid credentials."); // User not found
+                }
+                if (!user.password) {
+                    console.log(`AUTHORIZE: User ${credentials.email} has no password set.`);
+                    throw new Error("Invalid credentials."); // Password not set
+                }
+
+                if (user.password === null) { // Redundant check if !user.password is above, but safe
+                    console.log(`AUTHORIZE: User ${credentials.email} password is null.`);
+                    throw new Error("User account issue: Password not set.");
+                }
+
+                const isValid = await verifyPassword(credentials.password, user.password); // No 'as string' needed
+                if (!isValid) {
+                    console.log(`AUTHORIZE: Invalid password for email: ${credentials.email}`);
+                    throw new Error("Invalid credentials."); // Password mismatch
+                }
+
+                console.log(`AUTHORIZE: Success for email: ${credentials.email}, User ID: ${user.id}`);
+                // Return the necessary user object fields for session/callbacks
+                return { id: user.id, email: user.email, name: user.name, role: user.role };
+            },
+        }),
+    ],
+    session: { 
+        strategy: "jwt", 
+        maxAge: 30 * 24 * 60 * 60, 
+        updateAge: 24 * 60 * 60,   
+    },
+    pages: {
+        signIn: '/auth/signin',
+        verifyRequest: '/auth/verify-request', // For Magic Link
+        signOut: '/auth/verify-signin',
+        error: '/auth/error', 
+    },
+    callbacks: {
+        async jwt({ token, user, account }) {
+            if (user) {
+                token.id = user.id;
+                token.email = user.email;
+                token.name = user.name;
+                token.role = user.role;
+            }
+            return token;
         },
-      },
-      from: process.env.EMAIL_FROM,
-    }),
-
-    // Credentials (email + password)
-    CredentialsProvider({
-      name: "Email + Password",
-      credentials: {
-        email:    { label: "Email",    type: "email"    },
-        password: { label: "Password", type: "password" },
-      },
-      // ← Note: credentials is Partial<Record<...>>, not Record or undefined
-      async authorize(
-        credentials: Partial<Record<"email" | "password", unknown>>,
-        req: Request
-      ): Promise<User | null> {
-        const email = credentials.email;
-        const pass  = credentials.password;
-
-        if (typeof email !== "string" || typeof pass !== "string") {
-          throw new Error("Invalid credentials format");
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
-        if (!user || !user.password) {
-          throw new Error("Invalid credentials");
-        }
-
-        const valid = await verifyPassword(pass, user.password);
-        if (!valid) {
-          throw new Error("Invalid credentials");
-        }
-
-        // Return exactly your module‐augmented `User`
-        return {
-          id:    user.id.toString(),
-          email: user.email,
-          name:  user.name,
-          role:  user.role,
-        };
-      },
-    }),
-  ],
-
-  session: {
-    strategy: "jwt",
-    maxAge:   30 * 24 * 60 * 60,
-    updateAge: 24 * 60 * 60,
-  },
-
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id   = user.id;
-        token.role = user.role as UserRole;
-      }
-      return token;
+        async session({ session, token, user }) {
+            // For JWT strategy, use token instead of user
+            if (token) {
+                session.user.id = token.id as string;
+                session.user.email = token.email as string;
+                session.user.name = token.name as string;
+                session.user.role = token.role as UserRole || 'customer';
+            } else if (user) {
+                // For backward compatibility with database strategy
+                session.user.id = user.id;
+                session.user.email = user.email;
+                session.user.name = user.name;
+                session.user.role = user.role;
+            }
+            console.log(`SESSION CALLBACK: Final session object:`, JSON.stringify(session));
+            return session;
+        },
+        async signIn({ user, account, profile }) {
+            console.log("SIGNIN CALLBACK with account provider:", account?.provider);
+            return true;
+        },
     },
-    async session({ session, token }) {
-      session.user.id   = token.id as string;
-      session.user.role = token.role as UserRole;
-      return session;
-    },
-    async signIn({ user, account }) {
-      console.log(
-        `SIGNIN callback: user=${user.email}, provider=${account?.provider}`
-      );
-      return true;
-    },
-  },
-
-  pages: {
-    signIn:        "/auth/signin",
-    verifyRequest: "/auth/verify-request",
-    error:         "/auth/error",
-  },
-};
-
-export default NextAuth(authConfig);
+} satisfies NextAuthConfig;
