@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import CustomerDashboard from "@/components/molecules/CustomerDashboard";
 import OrganizerDashboard from "@/components/molecules/OrganizerDashboard";
 
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const params = useParams();

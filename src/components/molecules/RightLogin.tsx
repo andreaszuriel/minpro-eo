@@ -184,7 +184,7 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                     </label>
                     <input
                       id="signupPassword"
-                      name="status"
+                      name="password"
                       type="password"
                       placeholder="••••••••"
                       className="w-full text-black border-gray-300 rounded-md p-2"
