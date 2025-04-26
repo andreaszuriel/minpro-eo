@@ -6,7 +6,10 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import {
   Calendar, BarChart3, ListChecks, PieChart, Plus, Search, UserCheck, Clock, MapPin, ChevronDown, ChevronUp, MoreHorizontal, Loader2,
-  CircleCheck, BadgeAlert, UserCircle2, Copy, Eye, EyeOff, CircleX, XCircle
+  CircleCheck, BadgeAlert, UserCircle2, Copy, Eye, EyeOff, CircleX, XCircle,
+  Pencil,
+  Ticket,
+  ChartArea
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -336,36 +339,36 @@ function EventsTab({ events }: { events: ExtendedEvent[] }) {
                   <div className="border-t border-gray-200 bg-gray-50 p-4">
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
-                        <h4 className="font-medium text-gray-700">Event Details</h4>
+                        <h4 className="font-medium text-primary-700">Event Details</h4>
                         <div className="grid grid-cols-2 gap-y-1 text-sm">
-                          <span className="text-gray-500">Genre:</span><span className="font-medium">{event.genre}</span>
-                          <span className="text-gray-500">Start Date:</span><span className="font-medium">{format(new Date(event.startDate), 'MMM d, yyyy')}</span>
-                          <span className="text-gray-500">End Date:</span><span className="font-medium">{format(new Date(event.endDate), 'MMM d, yyyy')}</span>
-                          <span className="text-gray-500">Location:</span><span className="font-medium">{event.location}</span>
-                          <span className="text-gray-500">Capacity:</span><span className="font-medium">{event.seats} seats</span>
+                          <span className="text-gray-500">Genre:</span><span className="font-medium text-black">{event.genre}</span>
+                          <span className="text-gray-500">Start Date:</span><span className="font-medium text-black">{format(new Date(event.startDate), 'MMM d, yyyy')}</span>
+                          <span className="text-gray-500">End Date:</span><span className="font-medium text-black">{format(new Date(event.endDate), 'MMM d, yyyy')}</span>
+                          <span className="text-gray-500">Location:</span><span className="font-medium text-black">{event.location}</span>
+                          <span className="text-gray-500">Capacity:</span><span className="font-medium text-black">{event.seats} seats</span>
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <h4 className="font-medium text-gray-700">Sales Summary</h4>
+                        <h4 className="font-medium text-primary-700">Sales Summary</h4>
                         <div className="grid grid-cols-2 gap-y-1 text-sm">
-                          <span className="text-gray-500">Tickets Sold:</span><span className="font-medium">{event.soldSeats || 0}</span>
-                          <span className="text-gray-500">Available:</span><span className="font-medium">{event.seats - (event.soldSeats || 0)}</span>
-                          <span className="text-gray-500">Revenue:</span><span className="font-medium">{formatCurrency(event.totalRevenue || 0, 'IDR')}</span>
-                          <span className="text-gray-500">Average Rating:</span><span className="font-medium">{event.averageRating ? event.averageRating.toFixed(1) + ' / 5.0' : 'No ratings'}</span>
+                          <span className="text-gray-500">Tickets Sold:</span><span className="font-medium text-black">{event.soldSeats || 0}</span>
+                          <span className="text-gray-500">Available:</span><span className="font-medium text-black">{event.seats - (event.soldSeats || 0)}</span>
+                          <span className="text-gray-500">Revenue:</span><span className="font-medium text-black">{formatCurrency(event.totalRevenue || 0, 'IDR')}</span>
+                          <span className="text-gray-500">Average Rating:</span><span className="font-medium text-black">{event.averageRating ? event.averageRating.toFixed(1) + ' / 5.0' : 'No ratings'}</span>
                         </div>
                       </div>
                       <div className="flex flex-col justify-between gap-2">
-                        <h4 className="font-medium text-gray-700">Actions</h4>
+                        <h4 className="font-medium text-primary-700">Actions</h4>
                         <div className="flex flex-col justify-end gap-2">
-                          <Button size="sm" variant="outline" className="w-full justify-start">
-                            <img src="/icons/edit.svg" alt="Edit" className="mr-2 h-4 w-4" />Edit Event
-                          </Button>
-                          <Button size="sm" variant="outline" className="w-full justify-start">
-                            <img src="/icons/chart.svg" alt="Chart" className="mr-2 h-4 w-4" />View Analytics
-                          </Button>
-                          <Button size="sm" variant="outline" className="w-full justify-start">
-                            <img src="/icons/ticket.svg" alt="Ticket" className="mr-2 h-4 w-4" />Manage Tickets
-                          </Button>
+                        <Button size="sm" variant="outline" className="text-black w-full justify-start">
+  <Pencil className="mr-2 h-4 w-4" /> Edit Event
+</Button>
+<Button size="sm" variant="outline" className="text-black w-full justify-start">
+  <ChartArea className="mr-2 h-4 w-4" /> View Analytics
+</Button>
+<Button size="sm" variant="outline" className="text-black w-full justify-start">
+  <Ticket className="mr-2 h-4 w-4" /> Manage Tickets
+</Button>
                         </div>
                       </div>
                     </div>
