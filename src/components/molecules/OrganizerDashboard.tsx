@@ -4,12 +4,9 @@ import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { 
-  Calendar, BarChart3, ListChecks, PieChart, Plus, Search, UserCheck, Clock, MapPin, ChevronDown, ChevronUp, MoreHorizontal, Loader2, 
-  CircleCheck,
-  BadgeAlert,
-  CircleX,
-  XCircle
+import {
+  Calendar, BarChart3, ListChecks, PieChart, Plus, Search, UserCheck, Clock, MapPin, ChevronDown, ChevronUp, MoreHorizontal, Loader2,
+  CircleCheck, BadgeAlert, UserCircle2, Copy, Eye, EyeOff, CircleX, XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,11 +16,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { formatCurrency } from '@/lib/utils'; // Importing from utils.ts
+import { formatCurrency } from '@/lib/utils';
 import type { Event, Transaction, TransactionStatus } from '@prisma/client';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts';
 import { User } from "next-auth";
+import ProfileModal from '@/components/atoms/ProfileModal'; 
 
+// Interface
 interface OrganizerDashboardProps {
   user: User;
 }
@@ -134,6 +133,8 @@ function getStatusBadge(status: TransactionStatus) {
 }
 
 // Sub-components
+
+// Overview Tab
 function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents, timeRange, setTimeRange }: {
   statistics: StatSummary;
   salesData: SalesData;
@@ -274,6 +275,7 @@ function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents
   );
 }
 
+// Events Tab
 function EventsTab({ events }: { events: ExtendedEvent[] }) {
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null);
   return (
@@ -378,6 +380,7 @@ function EventsTab({ events }: { events: ExtendedEvent[] }) {
   );
 }
 
+// Transaction Tab
 function TransactionsTab({ transactions }: { transactions: ExtendedTransaction[] }) {
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | 'ALL'>('ALL');
   const [selectedTransaction, setSelectedTransaction] = useState<ExtendedTransaction | null>(null);
@@ -560,6 +563,7 @@ function TransactionsTab({ transactions }: { transactions: ExtendedTransaction[]
   );
 }
 
+// Statistics Tab
 function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, timeRange, setTimeRange }: {
   salesData: SalesData;
   statusDistribution: StatusDistribution;
@@ -681,6 +685,55 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
     confirmPassword: '',
   });
 
+  const [copied, setCopied] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
+  const [organizerInfo, setOrganizerInfo] = useState<{
+    name: string;
+    email: string;
+    createdAt: string;
+    referralCode: string | null;
+    image: string | null;
+  }>({
+    name: session?.user?.name || '',
+    email: session?.user?.email || '',
+    createdAt: '',
+    referralCode: null,
+    image: session?.user?.image || null,
+  });
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.id) {
+      fetch(`/api/user/profile`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.user) {
+            setOrganizerInfo({
+              name: data.user.name || session.user?.name || '',
+              email: data.user.email || session.user?.email || '',
+              createdAt: data.user.createdAt || '',
+              referralCode: data.user.referralCode || null,
+              image: data.user.image || session.user?.image || null,
+            });
+          }
+        })
+        .catch(err => console.error('Error fetching user details:', err));
+    }
+  }, [status, session]);
+
+  // Referral Code
+  const copyReferralCode = () => {
+    if (organizerInfo.referralCode) {
+      navigator.clipboard.writeText(organizerInfo.referralCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const getInitial = (name: string) => {
+    return name && name.length > 0 ? name.charAt(0).toUpperCase() : 'U';
+  };
+
+  // Fetch Data
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.id) {
       const fetchData = async () => {
@@ -726,6 +779,7 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
     [events]
   );
 
+  // Profile Handler
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfileData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -743,36 +797,34 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      
+
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(errorText || 'Failed to update profile');
       }
-      
+
       const data = await res.json();
-      
+
       setIsProfileModalOpen(false);
       setProfileData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
-      
-      // Signal to the auth provider that the session has changed
+
       await fetch('/api/auth/session?update=true', { method: 'GET' });
-      
-      // Update the session object manually
+
       if (session && session.user) {
         session.user.name = data.user.name;
       }
-      
+
       alert('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
       alert(error instanceof Error ? error.message : 'An error occurred');
     }
   };
-  
+
   if (status === 'loading' || loading) {
     return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary-600" /> <span className="ml-2 text-lg font-medium text-black">Loading...</span></div>;
   }
-  
+
   if (!session?.user) {
     return (
       <div className="rounded-lg bg-red-50 p-6 text-center">
@@ -783,15 +835,88 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
       </div>
     );
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 flex flex-col md:flex-row justify-between gap-4 md:items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-primary-700">Organizer Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {session.user.name || 'Organizer'}!</p>
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="flex flex-col items-center">
+            {organizerInfo.image ? (
+              <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-primary-600">
+                <Image
+                  src={organizerInfo.image}
+                  alt={organizerInfo.name || "Profile"}
+                  width={96}
+                  height={96}
+                  className="object-cover w-full h-full"
+                />
+              </div>
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-primary-100 flex items-center justify-center border-2 border-primary-600">
+                <span className="text-4xl font-bold text-primary-600">
+                  {getInitial(organizerInfo.name)}
+                </span>
+              </div>
+            )}
+            {session.user.id === user.id && (
+              <Button
+                variant="default"
+                size="sm"
+                className="text-white mt-4 text-md bg-primary-400 hover:bg-secondary-500 transition-colors duration-200 cursor-pointer"
+                onClick={() => setIsProfileModalOpen(true)}
+              >
+                Edit Profile
+              </Button>
+            )}
+          </div>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-primary-700">{organizerInfo.name}</h1>
+            <div className="mt-2 space-y-1">
+              <p className="text-gray-600 font-medium">Event Organizer</p>
+              <p className="text-gray-600 text-sm">
+                Member since: {organizerInfo.createdAt ?
+                  format(new Date(organizerInfo.createdAt), 'MMMM d, yyyy') :
+                  'Loading...'}
+              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-gray-600 text-sm">
+                  {showEmail ? organizerInfo.email : organizerInfo.email.replace(/(.{2})(.*)(@.*)/, "$1****$3")}
+                </p>
+                <button
+                  onClick={() => setShowEmail(!showEmail)}
+                  className="text-gray-500 hover:text-primary-600"
+                >
+                  {showEmail ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          {session.user.id === user.id && organizerInfo.referralCode && (
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 min-w-[250px]">
+              <h3 className="text-lg font-bold text-gray-800">Referral Code</h3>
+              <div className="mt-2 flex items-center">
+                <code className="bg-primary-300 px-3 py-1 rounded border border-gray-300 flex-1">
+                  {organizerInfo.referralCode}
+                </code>
+                <button
+                  onClick={copyReferralCode}
+                  className="ml-2 p-1 rounded hover:bg-gray-200 transition-colors"
+                  title="Copy to clipboard"
+                >
+                  {copied ?
+                    <span className="text-green-600 text-xs font-medium">Copied!</span> :
+                    <Copy className="h-4 w-4 text-gray-600" />
+                  }
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="self-center">
+            <Button className="bg-secondary-600 hover:bg-secondary-700 cursor-pointer ">
+              <Plus className="mr-2 h-5 w-5" />Create New Event
+            </Button>
+          </div>
         </div>
-        <Button className="bg-secondary-600 hover:bg-secondary-700"><Plus className="mr-2 h-5 w-5" />Create New Event</Button>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6 grid w-full md:w-auto grid-cols-3 md:grid-cols-4">
@@ -806,60 +931,14 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
         <TabsContent value="statistics"><StatisticsTab salesData={salesData} statusDistribution={statusDistribution} eventPerformanceData={eventPerformanceData} timeRange={timeRange} setTimeRange={setTimeRange} /></TabsContent>
       </Tabs>
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-black">Edit Profile</h3>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setIsProfileModalOpen(false)}
-                className="hover:text-primary-400 transition-colors duration-200 cursor-pointer"
-              >
-                <XCircle className="h-8 w-8 text-black" />
-              </Button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-black">Name</label>
-                <Input name="name" value={profileData.name} onChange={handleProfileChange} className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-black">Email</label>
-                <Input value={profileData.email} disabled className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
-                <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
-              </div>
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="font-medium text-black">Change Password</h4>
-                <p className="text-xs text-gray-500">Leave blank if unchanged</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-black">Current Password</label>
-                <Input type="password" name="currentPassword" value={profileData.currentPassword} onChange={handleProfileChange} className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-black">New Password</label>
-                <Input type="password" name="newPassword" value={profileData.newPassword} onChange={handleProfileChange} className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-black">Confirm New Password</label>
-                <Input type="password" name="confirmPassword" value={profileData.confirmPassword} onChange={handleProfileChange} className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={updateProfile} className="bg-primary-600 hover:bg-primary-700">Save Changes</Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          profileData={profileData}
+          handleProfileChange={handleProfileChange}
+          updateProfile={updateProfile}
+        />
       )}
-      <div className="fixed bottom-6 right-6">
-        <Button 
-          onClick={() => setIsProfileModalOpen(true)} 
-          className="rounded-full h-12 w-12 p-0 bg-secondary-600 hover:bg-secondary-700 cursor-pointer"
-        >
-          <UserCheck className="h-5 w-5" />
-        </Button>
-      </div>
     </div>
   );
 }

@@ -212,7 +212,7 @@ export default function Navbar() {
           </div>
           <button 
             onClick={() => handleNavigation(`/dashboard/${session.user?.id}`)}
-            className="flex items-center w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700"
+            className="cursor-pointer flex items-center w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700"
           >
             <User className="h-4 w-4 mr-2" />
             Profile
@@ -224,7 +224,7 @@ export default function Navbar() {
               setShowUserMenu?.(false);
               closeMobileMenu?.();
             }}
-            className="flex items-center w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700 border-t border-slate-100"
+            className="cursor-pointer flex items-center w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700 border-t border-slate-100"
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
@@ -234,7 +234,7 @@ export default function Navbar() {
         <>
           <button 
             onClick={() => handleNavigation('/login')}
-            className="flex items-center justify-between w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700"
+            className="cursor-pointer flex items-center justify-between w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700"
           >
             <span className="flex items-center">
               <LogIn className="h-4 w-4 mr-2" />
@@ -244,7 +244,7 @@ export default function Navbar() {
           </button>
           <button 
             onClick={() => handleNavigation('/register')}
-            className="flex items-center justify-between w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700 border-t border-slate-100"
+            className="cursor-pointer flex items-center justify-between w-full text-left py-2 px-4 hover:bg-slate-50 text-gray-700 border-t border-slate-100"
           >
             <span className="flex items-center">
               <User className="h-4 w-4 mr-2" />
@@ -271,7 +271,7 @@ export default function Navbar() {
           {/* Logo */}
           <button 
             onClick={() => handleNavigation('/')} 
-            className="flex items-center"
+            className="cursor-pointer flex items-center"
           >
             <Calendar className={`h-4 w-4 mr-2 ${isScrolled ? 'text-primary-700' : 'text-white'}`} />
             <span className="text-2xl font-bold font-brand tracking-tight">
@@ -310,7 +310,7 @@ export default function Navbar() {
                 }`}
               >
                 {status === 'authenticated' ? (
-                  <div className="h-8 w-8 rounded-full bg-tertiary-500 flex items-center justify-center text-white font-bold">
+                  <div className="cursor-pointer h-8 w-8 rounded-full bg-tertiary-500 flex items-center justify-center text-white font-bold">
                     {session.user?.name?.[0] || 'U'}
                   </div>
                 ) : (
@@ -364,7 +364,7 @@ export default function Navbar() {
             className={`md:hidden overflow-hidden ${isScrolled ? 'bg-white' : 'bg-primary-500'}`}
           >
             <div className="px-4 py-6 space-y-4">
-            <Link href="/" className="flex items-center">
+            <Link href="/" className="cursor-pointer flex items-center">
             <Calendar className={`h-4 w-4 mr-2 ${isScrolled ? 'text-primary-700' : 'text-white'}`} />
             <span className="text-2xl font-bold font-brand tracking-tight">
               live<span className={`${isScrolled ? 'text-tertiary-500' : 'text-secondary-400'}`}>wave</span>

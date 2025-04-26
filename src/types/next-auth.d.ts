@@ -3,10 +3,11 @@ import { UserRole } from '@prisma/client';
 declare module 'next-auth' {
   interface Session {
     user: {
+      image: any;
       id: string;
       email: string;
       name?: string | null;
-      role: UserRole; // Matches the UserRole enum from Prisma (customer | organizer)
+      role: UserRole; 
     };
   }
 
@@ -15,5 +16,6 @@ declare module 'next-auth' {
     email: string;
     name?: string | null;
     role: UserRole;
+    image?: string | null;
   }
 }

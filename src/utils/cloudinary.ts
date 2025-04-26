@@ -1,4 +1,3 @@
-// src/utils/cloudinary.ts
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import dotenv from 'dotenv';
 
@@ -11,5 +10,4 @@ cloudinary.config({
 });
 
 export default cloudinary;
-// re‑export the type for UploadApiResponse
 export type { UploadApiResponse };

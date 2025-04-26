@@ -3,6 +3,29 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { verifyPassword, saltAndHashPassword } from "@/utils/password";
 
+
+export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true,
+      referralCode: true,
+      image: true,
+    },
+  });
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  return NextResponse.json({ user });
+}
+
 export async function PUT(request: NextRequest) {
   try {
     // 1) Check if user is authenticated
