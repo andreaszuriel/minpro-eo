@@ -54,13 +54,17 @@ export async function PUT(request: NextRequest) {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData,
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, role: true },
     });
 
-    return NextResponse.json({
+    // 5) Generate a new JWT with updated user data
+    const response = NextResponse.json({
       message: "Profile updated successfully",
       user: updatedUser,
+      sessionUpdated: true
     });
+
+    return response;
   } catch (error) {
     console.error("Error updating profile:", error);
     return NextResponse.json(

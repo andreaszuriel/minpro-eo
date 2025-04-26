@@ -549,7 +549,7 @@ function TransactionsTab({ transactions }: { transactions: ExtendedTransaction[]
                   <XCircle className="mr-2 h-4 w-4" />Reject Payment
                 </Button>
                 <Button variant="outline" onClick={() => { updateStatus(selectedTransaction.id, 'PAID'); setIsDetailsOpen(false); }} className="border-green-200 text-green-600 hover:bg-green-50">
-                  <CircleCheck className="mr-2 h-4 w-4" />Approve Payment
+                  <CircleCheck className="text-black mr-2 h-4 w-4" />Approve Payment
                 </Button>
               </div>
             )}
@@ -743,21 +743,36 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error((await res.text()) || 'Failed to update profile');
-      if (session?.user) session.user.name = profileData.name;
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || 'Failed to update profile');
+      }
+      
+      const data = await res.json();
+      
       setIsProfileModalOpen(false);
       setProfileData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+      
+      // Signal to the auth provider that the session has changed
+      await fetch('/api/auth/session?update=true', { method: 'GET' });
+      
+      // Update the session object manually
+      if (session && session.user) {
+        session.user.name = data.user.name;
+      }
+      
       alert('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
       alert(error instanceof Error ? error.message : 'An error occurred');
     }
   };
-
+  
   if (status === 'loading' || loading) {
-    return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary-600" /> <span className="ml-2 text-lg font-medium">Loading...</span></div>;
+    return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary-600" /> <span className="ml-2 text-lg font-medium text-black">Loading...</span></div>;
   }
-
+  
   if (!session?.user) {
     return (
       <div className="rounded-lg bg-red-50 p-6 text-center">
@@ -768,7 +783,7 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
       </div>
     );
   }
-
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex flex-col md:flex-row justify-between gap-4 md:items-center">
@@ -780,10 +795,10 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6 grid w-full md:w-auto grid-cols-3 md:grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="events">My Events</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="statistics">Statistics</TabsTrigger>
+          <TabsTrigger value="overview" className="text-black hover:text-primary-400 transition-colors duration-200 cursor-pointer">Overview</TabsTrigger>
+          <TabsTrigger value="events" className="text-black hover:text-primary-400 transition-colors duration-200 cursor-pointer">My Events</TabsTrigger>
+          <TabsTrigger value="transactions" className="text-black hover:text-primary-400 transition-colors duration-200 cursor-pointer">Transactions</TabsTrigger>
+          <TabsTrigger value="statistics" className="text-black hover:text-primary-400 transition-colors duration-200 cursor-pointer">Statistics</TabsTrigger>
         </TabsList>
         <TabsContent value="overview"><OverviewTab statistics={statistics} salesData={salesData} statusDistribution={statusDistribution} upcomingEvents={upcomingEvents} timeRange={timeRange} setTimeRange={setTimeRange} /></TabsContent>
         <TabsContent value="events"><EventsTab events={events} /></TabsContent>
@@ -794,33 +809,40 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Edit Profile</h3>
-              <Button variant="ghost" size="sm" onClick={() => setIsProfileModalOpen(false)}><XCircle className="h-5 w-5" /></Button>
+              <h3 className="text-lg font-medium text-black">Edit Profile</h3>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsProfileModalOpen(false)}
+                className="hover:text-primary-400 transition-colors duration-200 cursor-pointer"
+              >
+                <XCircle className="h-8 w-8 text-black" />
+              </Button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <label className="block text-sm font-medium text-black">Name</label>
                 <Input name="name" value={profileData.name} onChange={handleProfileChange} className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <label className="block text-sm font-medium text-black">Email</label>
                 <Input value={profileData.email} disabled className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
                 <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
               </div>
               <div className="border-t border-gray-200 pt-4">
-                <h4 className="font-medium">Change Password</h4>
+                <h4 className="font-medium text-black">Change Password</h4>
                 <p className="text-xs text-gray-500">Leave blank if unchanged</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                <label className="block text-sm font-medium text-black">Current Password</label>
                 <Input type="password" name="currentPassword" value={profileData.currentPassword} onChange={handleProfileChange} className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">New Password</label>
+                <label className="block text-sm font-medium text-black">New Password</label>
                 <Input type="password" name="newPassword" value={profileData.newPassword} onChange={handleProfileChange} className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                <label className="block text-sm font-medium text-black">Confirm New Password</label>
                 <Input type="password" name="confirmPassword" value={profileData.confirmPassword} onChange={handleProfileChange} className="mt-1 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
               </div>
               <div className="flex justify-end">
@@ -831,7 +853,12 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
         </div>
       )}
       <div className="fixed bottom-6 right-6">
-        <Button onClick={() => setIsProfileModalOpen(true)} className="rounded-full h-12 w-12 p-0 bg-secondary-600 hover:bg-secondary-700"><UserCheck className="h-5 w-5" /></Button>
+        <Button 
+          onClick={() => setIsProfileModalOpen(true)} 
+          className="rounded-full h-12 w-12 p-0 bg-secondary-600 hover:bg-secondary-700 cursor-pointer"
+        >
+          <UserCheck className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   );
