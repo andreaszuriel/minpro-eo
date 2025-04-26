@@ -5,22 +5,15 @@ import { verifyPassword, saltAndHashPassword } from "@/utils/password";
 
 export async function PUT(request: NextRequest) {
   try {
-    // 1) Authenticate
+    // 1) Check if user is authenticated
     const session = await auth();
     if (!session || !session.user?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-
-    // 2) Parse & validate user ID
-    const userId = Number(session.user.id);
-    if (Number.isNaN(userId)) {
-      return NextResponse.json({ message: "Invalid user ID" }, { status: 400 });
-    }
-
-    // 3) Parse request body
+    const userId = session.user.id;
     const { name, currentPassword, newPassword } = await request.json();
 
-    // 4) Load current user
+    // 2) Fetch user from database
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, name: true, password: true },
@@ -29,7 +22,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    // 5) Build update payload
+    // 3) Build update payload
     const updateData: { name?: string; password?: string } = {};
 
     if (name && name !== user.name) {
@@ -57,7 +50,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ message: "No changes to update" });
     }
 
-    // 6) Perform update
+    // 4) Perform update
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData,
@@ -66,7 +59,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       message: "Profile updated successfully",
-      user:    updatedUser,
+      user: updatedUser,
     });
   } catch (error) {
     console.error("Error updating profile:", error);
