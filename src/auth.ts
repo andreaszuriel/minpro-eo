@@ -3,7 +3,7 @@ import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import type { Adapter, AdapterAccount } from "@auth/core/adapters";
+import type { AdapterAccount } from "@auth/core/adapters";
 
 // Get the original adapter
 const prismaAdapter = PrismaAdapter(prisma);

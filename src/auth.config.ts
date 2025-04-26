@@ -1,7 +1,7 @@
 import type { NextAuthConfig } from 'next-auth';
 import Nodemailer from "next-auth/providers/nodemailer";
 import Credentials from "next-auth/providers/credentials";
-import { saltAndHashPassword, verifyPassword } from "@/utils/password"; 
+import { verifyPassword } from "@/utils/password"; 
 import { prisma } from "@/lib/prisma";
 import { UserRole } from '@prisma/client'; 
 

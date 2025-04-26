@@ -1,33 +1,39 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Image from 'next/image';
+import Image from 'next/image'; 
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react'; 
 import {
   Calendar, BarChart3, ListChecks, PieChart, Plus, Search, UserCheck, Clock, MapPin, ChevronDown, ChevronUp, MoreHorizontal, Loader2,
-  CircleCheck, BadgeAlert, UserCircle2, Copy, Eye, EyeOff, CircleX, XCircle,
-  Pencil,
-  Ticket,
-  ChartArea
+  CircleCheck,  CircleX, XCircle,
+  Pencil, Ticket, ChartArea 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs'; 
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { format } from 'date-fns'; 
 import { formatCurrency } from '@/lib/utils';
 import type { Event, Transaction, TransactionStatus } from '@prisma/client';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts';
-import { User } from "next-auth";
-import ProfileModal from '@/components/atoms/ProfileModal'; 
+import DashboardLayout from '@/components/atoms/DashboardLayout'; 
+import { User } from "next-auth"; 
 
-// Interface
+// --- Interfaces ---
 interface OrganizerDashboardProps {
-  user: User;
+  user: User & { 
+    id: string;
+    name: string | null;
+    email: string;
+    createdAt: string; 
+    role: 'customer' | 'organizer';
+    referralCode?: string | null;
+    image?: string | null;
+  };
 }
 
 type ExtendedEvent = Event & {
@@ -55,7 +61,7 @@ type EventPerformanceData = { name: string; revenue: number; ticketsSold: number
 
 const COLORS = ['#4F46E5', '#F59E0B', '#10B981', '#EC4899', '#8B5CF6'];
 
-// Utility functions specific to dashboard
+// --- Utility functions specific to dashboard data processing  ---
 function processEvents(events: Event[], transactions: ExtendedTransaction[]): ExtendedEvent[] {
   return events.map(event => {
     const eventTransactions = transactions.filter(t => t.eventId === event.id && t.status === 'PAID');
@@ -135,7 +141,7 @@ function getStatusBadge(status: TransactionStatus) {
   return <Badge variant="outline" className={badgeStyles[status]}>{formatStatus(status)}</Badge>;
 }
 
-// Sub-components
+// --- Sub-components for Tab Content ---
 
 // Overview Tab
 function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents, timeRange, setTimeRange }: {
@@ -148,7 +154,7 @@ function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents
 }) {
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-4">
+       <div className="grid gap-6 md:grid-cols-4">
         <Card className="bg-gradient-to-br from-primary-600 to-primary-700 text-white">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -281,7 +287,7 @@ function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents
 // Events Tab
 function EventsTab({ events }: { events: ExtendedEvent[] }) {
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null);
-  return (
+   return (
     <Card>
       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <CardTitle>My Events</CardTitle>
@@ -361,14 +367,14 @@ function EventsTab({ events }: { events: ExtendedEvent[] }) {
                         <h4 className="font-medium text-primary-700">Actions</h4>
                         <div className="flex flex-col justify-end gap-2">
                         <Button size="sm" variant="outline" className="text-black w-full justify-start">
-  <Pencil className="mr-2 h-4 w-4" /> Edit Event
-</Button>
-<Button size="sm" variant="outline" className="text-black w-full justify-start">
-  <ChartArea className="mr-2 h-4 w-4" /> View Analytics
-</Button>
-<Button size="sm" variant="outline" className="text-black w-full justify-start">
-  <Ticket className="mr-2 h-4 w-4" /> Manage Tickets
-</Button>
+                          <Pencil className="mr-2 h-4 w-4" /> Edit Event
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-black w-full justify-start">
+                          <ChartArea className="mr-2 h-4 w-4" /> View Analytics
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-black w-full justify-start">
+                          <Ticket className="mr-2 h-4 w-4" /> Manage Tickets
+                        </Button>
                         </div>
                       </div>
                     </div>
@@ -384,34 +390,51 @@ function EventsTab({ events }: { events: ExtendedEvent[] }) {
 }
 
 // Transaction Tab
-function TransactionsTab({ transactions }: { transactions: ExtendedTransaction[] }) {
+function TransactionsTab({ transactions: initialTransactions }: { transactions: ExtendedTransaction[] }) {
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | 'ALL'>('ALL');
   const [selectedTransaction, setSelectedTransaction] = useState<ExtendedTransaction | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [transactions, setTransactions] = useState<ExtendedTransaction[]>(initialTransactions); // Local state to manage updates
+
+  useEffect(() => {
+      setTransactions(initialTransactions); 
+  }, [initialTransactions]);
 
   const updateStatus = async (id: number, status: TransactionStatus) => {
+    const originalTransactions = transactions;
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+    setIsDetailsOpen(false); 
+
     try {
-      await fetch(`/api/organizer/transaction/${id}/status`, {
+      const res = await fetch(`/api/organizer/transaction/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
-      transactions = transactions.map(t => t.id === id ? { ...t, status } : t);
+      if (!res.ok) throw new Error('Failed to update status');
+      // No need to re-set state if API call succeeds
     } catch (error) {
       console.error('Failed to update transaction status:', error);
+      // Revert UI on failure
+      setTransactions(originalTransactions);
+      alert('Failed to update transaction status. Please try again.');
     }
   };
 
   const resendTicket = async (id: number) => {
     try {
-      await fetch(`/api/organizer/transaction/${id}/resend-ticket`, { method: 'POST' });
+      const res = await fetch(`/api/organizer/transaction/${id}/resend-ticket`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to resend ticket');
       alert('Ticket resent successfully!');
     } catch (error) {
       console.error('Failed to resend ticket:', error);
+       alert('Failed to resend ticket. Please try again.');
+    } finally {
+        // Remove loading state indicator
     }
   };
 
-  return (
+   return (
     <>
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
@@ -503,26 +526,27 @@ function TransactionsTab({ transactions }: { transactions: ExtendedTransaction[]
           )}
         </CardContent>
       </Card>
+       {/* Transaction Details Modal */}
       {isDetailsOpen && selectedTransaction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg overflow-auto max-h-[90vh]"> {/* Added overflow & max-height */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium">Transaction #{selectedTransaction.id}</h3>
-              <Button variant="ghost" size="sm" onClick={() => setIsDetailsOpen(false)}><CircleX className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => setIsDetailsOpen(false)}><CircleX className="h-5 w-5" /></Button> {/* Use size="icon" */}
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <h4 className="font-medium text-gray-700">Customer Details</h4>
-                <div className="mt-2 grid grid-cols-2 gap-y-1 text-sm">
-                  <span className="text-gray-500">Name:</span><span className="font-medium">{selectedTransaction.user.name || 'Anonymous'}</span>
-                  <span className="text-gray-500">Email:</span><span className="font-medium">{selectedTransaction.user.email}</span>
-                  <span className="text-gray-500">Purchase Date:</span><span className="font-medium">{format(new Date(selectedTransaction.createdAt), 'MMM d, yyyy')}</span>
+                <div className="mt-2 grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-sm"> 
+                  <span className="text-gray-500">Name:</span><span className="font-medium break-words">{selectedTransaction.user.name || 'Anonymous'}</span>
+                  <span className="text-gray-500">Email:</span><span className="font-medium break-words">{selectedTransaction.user.email}</span>
+                  <span className="text-gray-500">Purchase Date:</span><span className="font-medium">{format(new Date(selectedTransaction.createdAt), 'PPp')}</span>
                 </div>
               </div>
               <div>
                 <h4 className="font-medium text-gray-700">Transaction Details</h4>
-                <div className="mt-2 grid grid-cols-2 gap-y-1 text-sm">
-                  <span className="text-gray-500">Event:</span><span className="font-medium">{selectedTransaction.event.title}</span>
+                <div className="mt-2 grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-sm"> 
+                  <span className="text-gray-500">Event:</span><span className="font-medium break-words">{selectedTransaction.event.title}</span>
                   <span className="text-gray-500">Ticket Type:</span><span className="font-medium">{selectedTransaction.tierType}</span>
                   <span className="text-gray-500">Quantity:</span><span className="font-medium">{selectedTransaction.ticketQuantity}</span>
                   <span className="text-gray-500">Base Price:</span><span className="font-medium">{formatCurrency(selectedTransaction.basePrice, 'IDR')}</span>
@@ -533,7 +557,7 @@ function TransactionsTab({ transactions }: { transactions: ExtendedTransaction[]
                   )}
                   {selectedTransaction.pointsUsed > 0 && (
                     <>
-                      <span className="text-gray-500">Points Used:</span><span className="font-medium">{selectedTransaction.pointsUsed} points</span>
+                      <span className="text-gray-500">Points Used:</span><span className="font-medium">{selectedTransaction.pointsUsed} pts</span>
                     </>
                   )}
                   <span className="text-gray-500">Final Price:</span><span className="font-bold">{formatCurrency(selectedTransaction.finalPrice, 'IDR')}</span>
@@ -543,21 +567,36 @@ function TransactionsTab({ transactions }: { transactions: ExtendedTransaction[]
             </div>
             {selectedTransaction.paymentProof && (
               <div className="mt-4">
-                <h4 className="font-medium text-gray-700">Payment Proof</h4>
-                <div className="mt-2 h-64 w-full overflow-hidden rounded-md border border-gray-200">
-                  <Image src={selectedTransaction.paymentProof} alt="Payment Proof" width={800} height={600} className="h-full w-full object-contain" />
+                <h4 className="font-medium text-gray-700 mb-2">Payment Proof</h4>
+                <div className="mt-2 max-h-80 w-full overflow-hidden rounded-md border border-gray-200 flex justify-center items-center bg-gray-100"> 
+                   <a href={selectedTransaction.paymentProof} target="_blank" rel="noopener noreferrer">
+                     <Image
+                        src={selectedTransaction.paymentProof}
+                        alt="Payment Proof"
+                        width={400} 
+                        height={300} 
+                        className="max-h-full max-w-full object-contain cursor-pointer" 
+                      />
+                   </a>
                 </div>
               </div>
             )}
             {selectedTransaction.status === 'WAITING_ADMIN' && (
-              <div className="mt-4 flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => { updateStatus(selectedTransaction.id, 'CANCELED'); setIsDetailsOpen(false); }} className="border-red-200 text-red-600 hover:bg-red-50">
+              <div className="mt-6 flex justify-end space-x-2 border-t pt-4"> 
+                <Button variant="outline" onClick={() => updateStatus(selectedTransaction.id, 'CANCELED')} className="border-red-200 text-red-600 hover:bg-red-50">
                   <XCircle className="mr-2 h-4 w-4" />Reject Payment
                 </Button>
-                <Button variant="outline" onClick={() => { updateStatus(selectedTransaction.id, 'PAID'); setIsDetailsOpen(false); }} className="border-green-200 text-green-600 hover:bg-green-50">
-                  <CircleCheck className="text-black mr-2 h-4 w-4" />Approve Payment
+                <Button variant="outline" onClick={() => updateStatus(selectedTransaction.id, 'PAID')} className="border-green-200 text-green-600 hover:bg-green-50">
+                  <CircleCheck className="mr-2 h-4 w-4" />Approve Payment
                 </Button>
               </div>
+            )}
+             {selectedTransaction.status === 'PAID' && ( 
+                <div className="mt-6 flex justify-end space-x-2 border-t pt-4">
+                    <Button variant="outline" onClick={() => resendTicket(selectedTransaction.id)}>
+                        <Ticket className="mr-2 h-4 w-4" /> Resend Ticket
+                    </Button>
+                </div>
             )}
           </div>
         </div>
@@ -565,6 +604,7 @@ function TransactionsTab({ transactions }: { transactions: ExtendedTransaction[]
     </>
   );
 }
+
 
 // Statistics Tab
 function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, timeRange, setTimeRange }: {
@@ -574,7 +614,7 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
   timeRange: string;
   setTimeRange: (value: string) => void;
 }) {
-  return (
+   return (
     <Card>
       <CardHeader><CardTitle>Performance Statistics</CardTitle></CardHeader>
       <CardContent>
@@ -671,106 +711,71 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
   );
 }
 
-// Main Component
+// --- Main Refactored Component ---
 export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
-  const { data: session, status } = useSession();
-  const [activeTab, setActiveTab] = useState('overview');
+  const { data: session, status } = useSession(); 
   const [events, setEvents] = useState<ExtendedEvent[]>([]);
+  // Use initialTransactions prop for TransactionsTab, but keep a state for updates if needed
   const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('month');
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [profileData, setProfileData] = useState({
-    name: session?.user?.name || '',
-    email: session?.user?.email || '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
+  const [timeRange, setTimeRange] = useState('month'); 
 
-  const [copied, setCopied] = useState(false);
-  const [showEmail, setShowEmail] = useState(false);
-  const [organizerInfo, setOrganizerInfo] = useState<{
-    name: string;
-    email: string;
-    createdAt: string;
-    referralCode: string | null;
-    image: string | null;
-  }>({
-    name: session?.user?.name || '',
-    email: session?.user?.email || '',
-    createdAt: '',
-    referralCode: null,
-    image: session?.user?.image || null,
-  });
+  // Define Tabs for Organizer
+  const tabs = [
+    { value: 'overview', label: 'Overview' },
+    { value: 'events', label: 'My Events' },
+    { value: 'transactions', label: 'Transactions' },
+    { value: 'statistics', label: 'Statistics' },
+  ];
 
+  // Define Action Button for Organizer
+  const actionButton = (
+    <Link href="/events/create" passHref>
+      <Button className="bg-secondary-600 hover:bg-secondary-700 cursor-pointer">
+        <Plus className="mr-2 h-5 w-5" />Create New Event
+      </Button>
+    </Link>
+  );
+
+  // Fetch Data specific to Organizer
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.id) {
-      fetch(`/api/user/profile`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.user) {
-            setOrganizerInfo({
-              name: data.user.name || session.user?.name || '',
-              email: data.user.email || session.user?.email || '',
-              createdAt: data.user.createdAt || '',
-              referralCode: data.user.referralCode || null,
-              image: data.user.image || session.user?.image || null,
-            });
-          }
-        })
-        .catch(err => console.error('Error fetching user details:', err));
-    }
-  }, [status, session]);
-
-  // Referral Code
-  const copyReferralCode = () => {
-    if (organizerInfo.referralCode) {
-      navigator.clipboard.writeText(organizerInfo.referralCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const getInitial = (name: string) => {
-    return name && name.length > 0 ? name.charAt(0).toUpperCase() : 'U';
-  };
-
-  // Fetch Data
-  useEffect(() => {
-    if (status === 'authenticated' && session?.user?.id) {
+    // Use user.id from props if available and reliable, otherwise fallback to session?.user?.id
+    const userId = user?.id || session?.user?.id;
+    if (status === 'authenticated' && userId) {
       const fetchData = async () => {
         setLoading(true);
         try {
           const [eventsRes, transactionsRes] = await Promise.all([
-            fetch(`/api/organizer/events?userId=${session.user.id}`).then(res => res.ok ? res.json() : { events: [] }),
-            fetch(`/api/organizer/transactions?userId=${session.user.id}`).then(res => res.ok ? res.json() : { transactions: [] }),
+            fetch(`/api/organizer/events?userId=${userId}`).then(res => res.ok ? res.json() : { events: [] }),
+            fetch(`/api/organizer/transactions?userId=${userId}`).then(res => res.ok ? res.json() : { transactions: [] }),
           ]);
-          const processedEvents = processEvents(eventsRes.events || [], transactionsRes.transactions || []);
+          const fetchedTransactions = transactionsRes.transactions || [];
+          const processedEvents = processEvents(eventsRes.events || [], fetchedTransactions);
           setEvents(processedEvents);
-          setTransactions(transactionsRes.transactions || []);
-          setStatistics(calculateStatistics(processedEvents, transactionsRes.transactions || []));
+          setTransactions(fetchedTransactions); 
+          // Calculate statistics derived from the processed data
+          setStatistics(calculateStatistics(processedEvents, fetchedTransactions));
+
         } catch (error) {
           console.error('Error fetching data:', error);
           setEvents([]);
           setTransactions([]);
-          setStatistics({ totalEvents: 0, totalTransactions: 0, totalRevenue: 0, totalSeats: 0, soldSeats: 0 });
+           setStatistics({ totalEvents: 0, totalTransactions: 0, totalRevenue: 0, totalSeats: 0, soldSeats: 0 });
         } finally {
           setLoading(false);
         }
       };
       fetchData();
+    } else if (status === 'unauthenticated') {
+         setLoading(false); // Stop loading if not authenticated
     }
-  }, [status, session?.user?.id]);
+  }, [status, user?.id, session?.user?.id]);
 
+
+  // Derived State Calculation 
   const [statistics, setStatistics] = useState<StatSummary>({
-    totalEvents: 0,
-    totalTransactions: 0,
-    totalRevenue: 0,
-    totalSeats: 0,
-    soldSeats: 0,
+    totalEvents: 0, totalTransactions: 0, totalRevenue: 0, totalSeats: 0, soldSeats: 0
   });
-
   const salesData = useMemo(() => getSalesData(transactions, timeRange), [transactions, timeRange]);
   const statusDistribution = useMemo(() => getStatusDistribution(transactions), [transactions]);
   const eventPerformanceData = useMemo(() => getEventPerformanceData(events), [events]);
@@ -782,166 +787,45 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
     [events]
   );
 
-  // Profile Handler
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setProfileData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const updateProfile = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    if (profileData.newPassword && (profileData.newPassword !== profileData.confirmPassword || !profileData.currentPassword)) {
-      alert(profileData.newPassword !== profileData.confirmPassword ? "New passwords don't match!" : "Please enter your current password.");
-      return;
-    }
-    const payload = { name: profileData.name, ...(profileData.newPassword && { currentPassword: profileData.currentPassword, newPassword: profileData.newPassword }) };
-    try {
-      const res = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || 'Failed to update profile');
-      }
-
-      const data = await res.json();
-
-      setIsProfileModalOpen(false);
-      setProfileData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
-
-      await fetch('/api/auth/session?update=true', { method: 'GET' });
-
-      if (session && session.user) {
-        session.user.name = data.user.name;
-      }
-
-      alert('Profile updated successfully!');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      alert(error instanceof Error ? error.message : 'An error occurred');
+  // --- Render Tab Content Function ---
+  const renderTabContent = (activeTab: string) => {
+    switch (activeTab) {
+      case 'overview':
+        return <TabsContent value="overview"><OverviewTab statistics={statistics} salesData={salesData} statusDistribution={statusDistribution} upcomingEvents={upcomingEvents} timeRange={timeRange} setTimeRange={setTimeRange} /></TabsContent>;
+      case 'events':
+        return <TabsContent value="events"><EventsTab events={events} /></TabsContent>;
+      case 'transactions':
+        return <TabsContent value="transactions"><TransactionsTab transactions={transactions} /></TabsContent>;
+      case 'statistics':
+        return <TabsContent value="statistics"><StatisticsTab salesData={salesData} statusDistribution={statusDistribution} eventPerformanceData={eventPerformanceData} timeRange={timeRange} setTimeRange={setTimeRange} /></TabsContent>;
+      default:
+        return null;
     }
   };
 
-  if (status === 'loading' || loading) {
-    return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary-600" /> <span className="ml-2 text-lg font-medium text-black">Loading...</span></div>;
-  }
+// --- Loading States ---
+if (status === 'loading' || loading) {
+  return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary-600" /> <span className="ml-2 text-lg font-medium text-black">Loading Dashboard...</span></div>;
+}
 
-  if (!session?.user) {
-    return (
-      <div className="rounded-lg bg-red-50 p-6 text-center">
-        <BadgeAlert className="mx-auto h-12 w-12 text-red-500" />
-        <h2 className="mt-4 text-xl font-bold text-gray-900">Authentication Required</h2>
-        <p className="mt-2 text-gray-600">Please sign in to access the dashboard.</p>
-        <Button className="mt-4" asChild><Link href="/auth/signin">Sign In</Link></Button>
-      </div>
-    );
-  }
+   const layoutUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt, 
+      role: user.role,
+      referralCode: user.referralCode,
+      image: user.image,
+  };
 
+
+  // --- Render using DashboardLayout ---
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="flex flex-col items-center">
-            {organizerInfo.image ? (
-              <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-primary-600">
-                <Image
-                  src={organizerInfo.image}
-                  alt={organizerInfo.name || "Profile"}
-                  width={96}
-                  height={96}
-                  className="object-cover w-full h-full"
-                />
-              </div>
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-primary-100 flex items-center justify-center border-2 border-primary-600">
-                <span className="text-4xl font-bold text-primary-600">
-                  {getInitial(organizerInfo.name)}
-                </span>
-              </div>
-            )}
-            {session.user.id === user.id && (
-              <Button
-                variant="default"
-                size="sm"
-                className="text-white mt-4 text-md bg-primary-400 hover:bg-secondary-500 transition-colors duration-200 cursor-pointer"
-                onClick={() => setIsProfileModalOpen(true)}
-              >
-                Edit Profile
-              </Button>
-            )}
-          </div>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-primary-700">{organizerInfo.name}</h1>
-            <div className="mt-2 space-y-1">
-              <p className="text-gray-600 font-medium">Event Organizer</p>
-              <p className="text-gray-600 text-sm">
-                Member since: {organizerInfo.createdAt ?
-                  format(new Date(organizerInfo.createdAt), 'MMMM d, yyyy') :
-                  'Loading...'}
-              </p>
-              <div className="flex items-center gap-2">
-                <p className="text-gray-600 text-sm">
-                  {showEmail ? organizerInfo.email : organizerInfo.email.replace(/(.{2})(.*)(@.*)/, "$1****$3")}
-                </p>
-                <button
-                  onClick={() => setShowEmail(!showEmail)}
-                  className="text-gray-500 hover:text-primary-600"
-                >
-                  {showEmail ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-          {session.user.id === user.id && organizerInfo.referralCode && (
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 min-w-[250px]">
-              <h3 className="text-lg font-bold text-gray-800">Referral Code</h3>
-              <div className="mt-2 flex items-center">
-                <code className="bg-primary-300 px-3 py-1 rounded border border-gray-300 flex-1">
-                  {organizerInfo.referralCode}
-                </code>
-                <button
-                  onClick={copyReferralCode}
-                  className="ml-2 p-1 rounded hover:bg-gray-200 transition-colors"
-                  title="Copy to clipboard"
-                >
-                  {copied ?
-                    <span className="text-green-600 text-xs font-medium">Copied!</span> :
-                    <Copy className="h-4 w-4 text-gray-600" />
-                  }
-                </button>
-              </div>
-            </div>
-          )}
-          <div className="self-center">
-            <Button className="bg-secondary-600 hover:bg-secondary-700 cursor-pointer ">
-              <Plus className="mr-2 h-5 w-5" />Create New Event
-            </Button>
-          </div>
-        </div>
-      </div>
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6 grid w-full md:w-auto grid-cols-3 md:grid-cols-4">
-          <TabsTrigger value="overview" className="text-black hover:text-primary-400 transition-colors duration-200 cursor-pointer">Overview</TabsTrigger>
-          <TabsTrigger value="events" className="text-black hover:text-primary-400 transition-colors duration-200 cursor-pointer">My Events</TabsTrigger>
-          <TabsTrigger value="transactions" className="text-black hover:text-primary-400 transition-colors duration-200 cursor-pointer">Transactions</TabsTrigger>
-          <TabsTrigger value="statistics" className="text-black hover:text-primary-400 transition-colors duration-200 cursor-pointer">Statistics</TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview"><OverviewTab statistics={statistics} salesData={salesData} statusDistribution={statusDistribution} upcomingEvents={upcomingEvents} timeRange={timeRange} setTimeRange={setTimeRange} /></TabsContent>
-        <TabsContent value="events"><EventsTab events={events} /></TabsContent>
-        <TabsContent value="transactions"><TransactionsTab transactions={transactions} /></TabsContent>
-        <TabsContent value="statistics"><StatisticsTab salesData={salesData} statusDistribution={statusDistribution} eventPerformanceData={eventPerformanceData} timeRange={timeRange} setTimeRange={setTimeRange} /></TabsContent>
-      </Tabs>
-      {isProfileModalOpen && (
-        <ProfileModal
-          isOpen={isProfileModalOpen}
-          onClose={() => setIsProfileModalOpen(false)}
-          profileData={profileData}
-          handleProfileChange={handleProfileChange}
-          updateProfile={updateProfile}
-        />
-      )}
-    </div>
+    <DashboardLayout
+      user={layoutUser} 
+      tabs={tabs}
+      renderTabContent={renderTabContent}
+      actionButton={actionButton}
+    />
   );
 }

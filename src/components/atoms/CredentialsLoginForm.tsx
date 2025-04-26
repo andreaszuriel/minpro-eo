@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react"; 
 
 interface CredentialsLoginFormProps {
@@ -15,7 +14,6 @@ interface CredentialsLoginFormProps {
 }
 
 export function CredentialsLoginForm({ setError, isLoading, setIsLoading }: CredentialsLoginFormProps) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [redirecting, setRedirecting] = useState(false);
@@ -25,7 +23,6 @@ export function CredentialsLoginForm({ setError, isLoading, setIsLoading }: Cred
     setError(null);
     
     try {
-      // We'll use the client-side signIn directly for better session handling
       const response = await signIn("credentials", {
         email: formData.get("email") as string,
         password: formData.get("password") as string,
@@ -42,16 +39,6 @@ export function CredentialsLoginForm({ setError, isLoading, setIsLoading }: Cred
         // Force a hard navigation to refresh the session
         window.location.href = "/auth/verify-signin";
         
-        // Or alternatively, for a more controlled experience:
-        // 1. Refresh the session data first
-        // 2. Then perform client navigation
-        /*
-        await fetch("/api/auth/session");
-        router.refresh(); // Force router to refresh current page data
-        setTimeout(() => {
-          router.push("/auth/verify-signin");
-        }, 300);
-        */
       }
     } catch (error: any) {
       console.error("Login error:", error);
