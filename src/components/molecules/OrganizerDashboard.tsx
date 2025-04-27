@@ -169,54 +169,77 @@ function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="text-primary-700 font-bold flex items-center justify-between">
               <span>Events</span>
               <Calendar className="h-5 w-5 text-primary-600" />
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{statistics.totalEvents}</div>
+            <div className="text-black text-3xl font-bold">{statistics.totalEvents}</div>
             <p className="mt-2 text-sm text-gray-500">Created events</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="text-primary-700 font-bold flex items-center justify-between">
               <span>Ticket Sales</span>
               <ListChecks className="h-5 w-5 text-primary-600" />
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{statistics.soldSeats}</div>
+            <div className="text-black text-3xl font-bold">{statistics.soldSeats}</div>
             <p className="mt-2 text-sm text-gray-500">Out of {statistics.totalSeats} seats</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="text-primary-700 font-bold flex items-center justify-between">
               <span>Transactions</span>
               <PieChart className="h-5 w-5 text-primary-600" />
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{statistics.totalTransactions}</div>
+            <div className="text-black text-3xl font-bold">{statistics.totalTransactions}</div>
             <p className="mt-2 text-sm text-gray-500">Ticket transactions</p>
           </CardContent>
         </Card>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle>Recent Sales</CardTitle>
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="year">This Year</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardHeader>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 text-primary-700 pb-2">
+  <CardTitle className="font-bold text-xl">Recent Sales</CardTitle>
+  <Select value={timeRange} onValueChange={setTimeRange}>
+    <SelectTrigger className="w-full sm:w-32 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent
+      className="bg-primary-600 text-white 
+        data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
+        data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
+        duration-200"
+    >
+      <SelectItem 
+        value="week" 
+        className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors"
+      >
+        This Week
+      </SelectItem>
+      <SelectItem 
+        value="month" 
+        className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors"
+      >
+        This Month
+      </SelectItem>
+      <SelectItem 
+        value="year" 
+        className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors"
+      >
+        This Year
+      </SelectItem>
+    </SelectContent>
+  </Select>
+</CardHeader>
+
           <CardContent className="pt-2">
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -233,7 +256,7 @@ function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Transaction Status</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-primary-700">Transaction Status</CardTitle></CardHeader>
           <CardContent>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -250,7 +273,7 @@ function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents
         </Card>
       </div>
       <Card>
-        <CardHeader><CardTitle>Upcoming Events</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-primary-700">Upcoming Events</CardTitle></CardHeader>
         <CardContent>
           <div className="space-y-4">
             {upcomingEvents.map(event => (
@@ -290,23 +313,53 @@ function EventsTab({ events }: { events: ExtendedEvent[] }) {
    return (
     <Card>
       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-        <CardTitle>My Events</CardTitle>
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input placeholder="Search events..." className="pl-8" />
-          </div>
-          <Select defaultValue="all">
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Events</SelectItem>
-              <SelectItem value="upcoming">Upcoming</SelectItem>
-              <SelectItem value="past">Past Events</SelectItem>
-              <SelectItem value="soldout">Sold Out</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
+  <CardTitle className="text-primary-700 font-bold text-xl">Events List</CardTitle>
+  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+    <div className="relative flex-1">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-800" />
+      <Input 
+        placeholder="Search events..." 
+        className="pl-10 pr-4 py-2 text-primary-600 w-full border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+      />
+    </div>
+    <Select defaultValue="all">
+      <SelectTrigger className="w-full sm:w-40 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent
+        className="bg-primary-600 text-white 
+          data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
+          data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
+          duration-200"
+      >
+        <SelectItem 
+          value="all" 
+          className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors"
+        >
+          All Events
+        </SelectItem>
+        <SelectItem 
+          value="upcoming" 
+          className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors"
+        >
+          Upcoming
+        </SelectItem>
+        <SelectItem 
+          value="past" 
+          className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors"
+        >
+          Past Events
+        </SelectItem>
+        <SelectItem 
+          value="soldout" 
+          className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors"
+        >
+          Sold Out
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+</CardHeader>
       <CardContent>
         {events.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center">
@@ -437,30 +490,48 @@ function TransactionsTab({ transactions: initialTransactions }: { transactions: 
    return (
     <>
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <CardTitle>Ticket Transactions</CardTitle>
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as TransactionStatus | 'ALL')}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                {['PENDING', 'WAITING_ADMIN', 'PAID', 'EXPIRED', 'CANCELED'].map(status => (
-                  <SelectItem key={status} value={status}>{formatStatus(status as TransactionStatus)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input placeholder="Search transactions..." className="pl-8" />
-            </div>
-          </div>
-        </CardHeader>
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  <CardTitle className="text-primary-700 font-bold text-xl">Ticket Transactions</CardTitle>
+  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+    <div className="relative w-full sm:w-64">
+      <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-700" />
+      <Input placeholder="Search transactions..." className="pl-8 text-primary-500" />
+    </div>
+    <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as TransactionStatus | 'ALL')}>
+  <SelectTrigger className="w-full sm:w-40 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+    <SelectValue />
+  </SelectTrigger>
+  <SelectContent
+    className="bg-primary-600 text-white 
+      data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
+      data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
+      duration-200"
+  >
+    <SelectItem 
+      value="ALL" 
+      className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors"
+    >
+      All Statuses
+    </SelectItem>
+    {['PENDING', 'WAITING_ADMIN', 'PAID', 'EXPIRED', 'CANCELED'].map(status => (
+      <SelectItem 
+        key={status} 
+        value={status} 
+        className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors"
+      >
+        {formatStatus(status as TransactionStatus)}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+  </div>
+</CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
             <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center">
               <ListChecks className="mb-2 h-10 w-10 text-gray-400" />
-              <h3 className="mb-1 text-lg font-medium">No Transactions Found</h3>
-              <p className="text-gray-500">No ticket purchases yet.</p>
+              <h3 className="text-black mb-1 text-lg font-medium">No Transactions Found</h3>
+              <p className="text-gray-600">No ticket purchases yet.</p>
             </div>
           ) : (
             <div className="overflow-auto">
@@ -616,47 +687,79 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
 }) {
    return (
     <Card>
-      <CardHeader><CardTitle>Performance Statistics</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-primary-700 font-bold text-xl">Performance Statistics</CardTitle></CardHeader>
       <CardContent>
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Revenue Over Time</CardTitle>
-              <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="year">This Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(value as number, 'IDR')} />
-                    <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.6} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Ticket Sales</CardTitle>
-              <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="year">This Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardHeader>
+         {/* Revenue Over Time */}
+<Card>
+  <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 text-primary-700 pb-2">
+    <CardTitle className="font-bold text-lg">Revenue Over Time</CardTitle>
+    <Select value={timeRange} onValueChange={setTimeRange}>
+      <SelectTrigger className="w-full sm:w-32 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent
+        className="bg-primary-600 text-white 
+          data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
+          data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
+          duration-200"
+      >
+        <SelectItem value="week" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors">
+          This Week
+        </SelectItem>
+        <SelectItem value="month" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors">
+          This Month
+        </SelectItem>
+        <SelectItem value="year" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors">
+          This Year
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  </CardHeader>
+  <CardContent className="pt-2">
+    <div className="h-72">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis />
+          <Tooltip formatter={(value) => formatCurrency(value as number, 'IDR')} />
+          <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.6} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  </CardContent>
+</Card>
+
+{/* Ticket Sales */}
+<Card>
+  <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 text-primary-700 pb-2">
+    <CardTitle className="font-bold text-lg">Ticket Sales</CardTitle>
+    <Select value={timeRange} onValueChange={setTimeRange}>
+      <SelectTrigger className="w-full sm:w-32 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent
+        className="bg-primary-600 text-white 
+          data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
+          data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
+          duration-200"
+      >
+        <SelectItem value="week" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors">
+          This Week
+        </SelectItem>
+        <SelectItem value="month" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors">
+          This Month
+        </SelectItem>
+        <SelectItem value="year" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors">
+          This Year
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  </CardHeader>
+</Card>
+
             <CardContent className="pt-2">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
@@ -672,7 +775,7 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-sm font-medium">Event Performance Comparison</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm text-primary-700 font-bold">Event Performance Comparison</CardTitle></CardHeader>
             <CardContent>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
@@ -690,7 +793,7 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-sm font-medium">Transaction Status Distribution</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm text-primary-700 font-bold">Transaction Status Distribution</CardTitle></CardHeader>
             <CardContent>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
@@ -711,7 +814,7 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
   );
 }
 
-// --- Main Refactored Component ---
+// --- Main Component ---
 export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
   const { data: session, status } = useSession(); 
   const [events, setEvents] = useState<ExtendedEvent[]>([]);
