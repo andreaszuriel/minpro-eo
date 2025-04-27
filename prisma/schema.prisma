@@ -94,6 +94,7 @@ model Authenticator {
 model Event {
   id            Int           @id @default(autoincrement())
   title         String
+   artist String
   genre         String
   startDate     DateTime
   endDate       DateTime

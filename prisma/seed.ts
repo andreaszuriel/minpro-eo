@@ -22,6 +22,7 @@ for (const concert of concertList) {
     update: {},
     create: {
       title: concert.title,
+      artist: concert.artist,
       genre: concert.genre,
       startDate: new Date(concert.startDate),
       endDate: new Date(concert.endDate),

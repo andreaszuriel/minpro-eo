@@ -730,11 +730,12 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
 
   // Define Action Button for Organizer
   const actionButton = (
-    <Link href="/events/create" passHref>
-      <Button className="bg-secondary-600 hover:bg-secondary-700 cursor-pointer">
-        <Plus className="mr-2 h-5 w-5" />Create New Event
-      </Button>
-    </Link>
+    <Link href={`/organizer/events/${user.id}/create`} passHref>
+  <Button className="bg-secondary-600 hover:bg-secondary-700 cursor-pointer">
+    <Plus className="mr-2 h-5 w-5" />Create New Event
+  </Button>
+</Link>
+
   );
 
   // Fetch Data specific to Organizer
