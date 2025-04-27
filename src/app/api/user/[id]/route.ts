@@ -19,8 +19,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         email: true,
         createdAt: true,
         referralCode: true,
-        role: true, // Include the role field
-        image: true, // Optionally include image if needed
+        role: true, 
+        image: true, 
       },
     });
 
