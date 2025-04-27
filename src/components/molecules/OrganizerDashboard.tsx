@@ -209,11 +209,11 @@ function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 text-primary-700 pb-2">
   <CardTitle className="font-bold text-xl">Recent Sales</CardTitle>
   <Select value={timeRange} onValueChange={setTimeRange}>
-    <SelectTrigger className="w-full sm:w-32 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+    <SelectTrigger className="w-full sm:w-32 bg-primary-400 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
       <SelectValue />
     </SelectTrigger>
     <SelectContent
-      className="bg-primary-600 text-white 
+      className="bg-primary-400 text-white 
         data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
         data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
         duration-200"
@@ -323,11 +323,11 @@ function EventsTab({ events }: { events: ExtendedEvent[] }) {
       />
     </div>
     <Select defaultValue="all">
-      <SelectTrigger className="w-full sm:w-40 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+      <SelectTrigger className="w-full sm:w-40 bg-primary-400 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
         <SelectValue />
       </SelectTrigger>
       <SelectContent
-        className="bg-primary-600 text-white 
+        className="bg-primary-400 text-white 
           data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
           data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
           duration-200"
@@ -498,11 +498,11 @@ function TransactionsTab({ transactions: initialTransactions }: { transactions: 
       <Input placeholder="Search transactions..." className="pl-8 text-primary-500" />
     </div>
     <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as TransactionStatus | 'ALL')}>
-  <SelectTrigger className="w-full sm:w-40 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+  <SelectTrigger className="w-full sm:w-40 bg-primary-400 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
     <SelectValue />
   </SelectTrigger>
   <SelectContent
-    className="bg-primary-600 text-white 
+    className="bg-primary-400 text-white 
       data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
       data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
       duration-200"
@@ -696,11 +696,11 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
   <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 text-primary-700 pb-2">
     <CardTitle className="font-bold text-lg">Revenue Over Time</CardTitle>
     <Select value={timeRange} onValueChange={setTimeRange}>
-      <SelectTrigger className="w-full sm:w-32 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+      <SelectTrigger className="w-full sm:w-32 bg-primary-400 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
         <SelectValue />
       </SelectTrigger>
       <SelectContent
-        className="bg-primary-600 text-white 
+        className="bg-primary-400 text-white 
           data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
           data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
           duration-200"
@@ -737,11 +737,11 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
   <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 text-primary-700 pb-2">
     <CardTitle className="font-bold text-lg">Ticket Sales</CardTitle>
     <Select value={timeRange} onValueChange={setTimeRange}>
-      <SelectTrigger className="w-full sm:w-32 bg-primary-600 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
+      <SelectTrigger className="w-full sm:w-32 bg-primary-400 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors">
         <SelectValue />
       </SelectTrigger>
       <SelectContent
-        className="bg-primary-600 text-white 
+        className="bg-primary-400 text-white 
           data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
           data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
           duration-200"

@@ -191,7 +191,7 @@ export default function DashboardLayout({ user, tabs, renderTabContent, actionBu
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 min-w-[250px]">
               <h3 className="text-lg font-bold text-gray-800">Referral Code</h3>
               <div className="mt-2 flex items-center">
-                <code className="bg-primary-300 px-3 py-1 rounded border border-gray-300 flex-1">
+                <code className="bg-primary-400 px-3 py-1 rounded border border-gray-300 flex-1">
                   {user.referralCode}
                 </code>
                 <button
