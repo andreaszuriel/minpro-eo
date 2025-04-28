@@ -17,12 +17,45 @@ export class EmailService {
     await this.transporter.sendMail({
       from: `"Your App" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Password Reset Request',
+      subject: '🔒 Password Reset Request',
       html: `
         <h2>Password Reset</h2>
         <p>Click the link below to reset your password:</p>
         <a href="${resetLink}">Reset Password</a>
         <p>This link will expire in 1 hour.</p>
+      `,
+    });
+  }
+
+  public async sendTransactionAccepted(
+    email: string,
+    txnId: number,
+    ticketUrl: string
+  ): Promise<void> {
+    await this.transporter.sendMail({
+      from: `"Your App" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: '🎫 Your Ticket is Confirmed',
+      html: `
+        <p>Hi there,</p>
+        <p>Your transaction <strong>#${txnId}</strong> has been accepted!</p>
+        <p>You can download your ticket here: <a href="${ticketUrl}">Download Ticket</a></p>
+      `,
+    });
+  }
+
+  public async sendTransactionRejected(
+    email: string,
+    txnId: number
+  ): Promise<void> {
+    await this.transporter.sendMail({
+      from: `"Your App" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: '❌ Your Transaction was Rejected',
+      html: `
+        <p>Hi there,</p>
+        <p>Unfortunately, your transaction <strong>#${txnId}</strong> was rejected.</p>
+        <p>Any points or coupons you used have been returned to your account.</p>
       `,
     });
   }

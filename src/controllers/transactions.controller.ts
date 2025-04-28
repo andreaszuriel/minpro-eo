@@ -1,8 +1,11 @@
+// src/controllers/transactions.controller.ts
 import { Request, Response } from 'express';
-import { TransactionService } from '../services/transactions.services';
+import { TransactionService } from '../services/transactions.service';
+
 const svc = new TransactionService();
 
 export class TransactionController {
+  /** POST /api/transaction */
   public create = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.id;
@@ -13,11 +16,11 @@ export class TransactionController {
     }
   };
 
+  /** POST /api/transaction/:id/upload-proof */
   public uploadProof = async (req: Request, res: Response) => {
     try {
       const id = Number(req.params.id);
-      // assume multer gave us req.file.path or URL
-      const proofUrl = (req as any).fileUrl as string;
+      const proofUrl = (req as any).fileUrl as string; // assume multer sets fileUrl
       const updated = await svc.uploadProof(id, proofUrl);
       res.json(updated);
     } catch (err: any) {
@@ -25,6 +28,7 @@ export class TransactionController {
     }
   };
 
+  /** POST /api/transaction/:id/approve */
   public approve = async (req: Request, res: Response) => {
     try {
       const id = Number(req.params.id);
@@ -35,6 +39,18 @@ export class TransactionController {
     }
   };
 
+  /** POST /api/transaction/:id/reject */
+  public reject = async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const updatedTxn = await svc.rejectTransaction(id);
+      res.json(updatedTxn);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  };
+
+  /** GET /api/transaction/:id */
   public get = async (req: Request, res: Response) => {
     try {
       const id = Number(req.params.id);

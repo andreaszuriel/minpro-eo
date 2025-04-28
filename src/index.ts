@@ -3,6 +3,7 @@ import { AuthRouter } from './routers/auth.router';
 import { UserRouter } from './routers/user.router';
 import { EventRouter } from './routers/event.router';
 import { TransactionRouter } from './routers/transactions.router';
+import { PromotionRouter } from './routers/promotion.router';
 import { startExpirationCron } from './utils/cron'; 
 
 class Server {
@@ -25,6 +26,9 @@ class Server {
     this.app.use('/api/user', new UserRouter().router);
     this.app.use('/api/event', new EventRouter().router);
     this.app.use('/api/transaction', new TransactionRouter().router);
+
+this.app.use('/api/event', new EventRouter().router);
+this.app.use('/api/event', PromotionRouter); // << Add this
   }
 
   public start(): void {
