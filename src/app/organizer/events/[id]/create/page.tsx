@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button"; 
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,13 @@ import {
   Loader2,
   X
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; 
 
 interface TicketTier {
   name: string;
@@ -34,11 +41,14 @@ export default function CreateEventPage({ params }: { params: Promise<{ id: stri
   const resolvedParams = React.use(params);
   const organizerId = resolvedParams.id;
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [genres, setGenres] = useState<{id: number, name: string}[]>([]);
+const [countries, setCountries] = useState<{id: number, name: string, code: string}[]>([]);
+const [dataLoading, setDataLoading] = useState(true);
   const [form, setForm] = useState({
     title: "",
     artist: "",
-    genre: "",
+    genreName: "",
+    countryCode: "", 
     startDate: "",
     endDate: "",
     location: "",
@@ -158,7 +168,7 @@ export default function CreateEventPage({ params }: { params: Promise<{ id: stri
     // Basic validation
     if (
       !form.title.trim() ||
-      !form.genre.trim() ||
+      !form.genreName.trim() ||
       !form.startDate ||
       !form.endDate ||
       !form.location.trim() ||
@@ -201,51 +211,104 @@ export default function CreateEventPage({ params }: { params: Promise<{ id: stri
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    
+
     setLoading(true);
-    
+
     try {
-      // Parse dates
       const start = new Date(form.startDate);
       const end = new Date(form.endDate);
-      
       const payload = {
-        ...form,
-        organizerId,
+        title: form.title,
+        artist: form.artist,
+        genreName: form.genreName,     
+        countryCode: form.countryCode, 
+        location: form.location,
         seats: Number(form.seats),
+        description: form.description,
+        image: form.image,
+        organizerId: organizerId,     
         startDate: formatISO(start),
         endDate: formatISO(end),
-        tiers: ticketTiers,
-        price: ticketTiers, // To match the schema structure
+        tiers: ticketTiers,            
+        price: ticketTiers,          
+        
       };
-  
+
+      console.log("Sending Payload:", JSON.stringify(payload, null, 2)); // Log before sending
+
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-  
+
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Failed to create event:", errorText);
+        // Try parsing JSON error first for better messages
+        let errorDescription = "Please check details and try again.";
+        try {
+            const errorData = await res.json();
+            console.error("Failed to create event - Server Response:", errorData);
+            if (errorData.error) {
+                errorDescription = errorData.error;
+            }
+        } catch (parseError) {
+            // If response is not JSON, use text
+            const errorText = await res.text();
+            console.error("Failed to create event - Server Response (Non-JSON):", errorText);
+            errorDescription = errorText.substring(0, 100); 
+        }
         toast.error("Failed to create event", {
-          description: "There was a problem creating your event. Please try again.",
+          description: errorDescription,
         });
       } else {
         toast.success("Event Created!", {
           description: "Your event has been created successfully.",
         });
-        router.push("/dashboard/${session.user?.id}");
+        router.push(`/dashboard/${organizerId}`); 
       }
     } catch (err) {
-      console.error(err);
+      console.error("Client-side error during handleSubmit:", err);
       toast.error("An unexpected error occurred", {
-        description: "Please try again or contact support if the problem persists.",
+        description: "Please try again or contact support.",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setDataLoading(true); // Set loading to true when starting fetch
+      try {
+        // Fetch genres
+        const genresResponse = await fetch('/api/genres');
+        if (genresResponse.ok) {
+          const genresData = await genresResponse.json();
+          setGenres(genresData.genres);
+        } else {
+           console.error("Failed to fetch genres");
+           toast.error("Failed to load genres");
+        }
+
+        // Fetch countries
+        const countriesResponse = await fetch('/api/countries');
+        if (countriesResponse.ok) {
+          const countriesData = await countriesResponse.json();
+          setCountries(countriesData.countries);
+        } else {
+           console.error("Failed to fetch countries");
+           toast.error("Failed to load countries");
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load required data");
+      } finally {
+        setDataLoading(false); // Set loading to false when fetch finishes (success or fail)
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <>
@@ -294,19 +357,40 @@ export default function CreateEventPage({ params }: { params: Promise<{ id: stri
                 />
               </div>  
 
-              <div>
+          {/* --- Genre Select --- */}
+          <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
                   <Music className="h-4 w-4 mr-2 text-primary-600" />
                   Genre
                 </label>
-                <Input 
-                  name="genre" 
-                  placeholder="e.g. Rock, Jazz, EDM" 
-                  value={form.genre} 
-                  onChange={handleChange} 
-                  className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
-                />
+                <Select
+                  value={form.genreName}
+                  onValueChange={(value) => setForm(prev => ({ ...prev, genreName: value }))}
+                  disabled={dataLoading} // Disable while loading
+                >
+                  <SelectTrigger className="w-full text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500">
+                    <SelectValue placeholder={dataLoading ? "Loading genres..." : "Select a genre"} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-slate-200 shadow-md">
+                    {!dataLoading && genres.length === 0 && (
+                      <SelectItem value="no-genres" disabled className="text-slate-500">
+                        No genres found
+                      </SelectItem>
+                    )}
+                  
+                    {genres.map((genre) => (
+                      <SelectItem
+                        key={genre.id}
+                        value={genre.name}
+                        className="text-slate-800 focus:bg-slate-100 focus:text-slate-900 hover:bg-slate-100 hover:text-slate-900 cursor-pointer" // Add text, focus, hover styles
+                      >
+                        {genre.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+           
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -338,18 +422,53 @@ export default function CreateEventPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
               
-              <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                  <MapPin className="h-4 w-4 mr-2 text-primary-600" />
-                  Location
-                </label>
-                <Input 
-                  name="location" 
-                  placeholder="e.g. Madison Square Garden, New York" 
-                  value={form.location} 
-                  onChange={handleChange} 
-                  className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div>
+    <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+      <MapPin className="h-4 w-4 mr-2 text-primary-600" />
+      Location
+    </label>
+    <Input 
+      name="location" 
+      placeholder="e.g. Madison Square Garden, New York" 
+      value={form.location} 
+      onChange={handleChange} 
+      className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+    />
+  </div>
+  
+       {/* --- Country Select --- */}
+       <div>
+                  <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                    <MapPin className="h-4 w-4 mr-2 text-primary-600" />
+                    Country
+                  </label>
+                  <Select
+                    value={form.countryCode}
+                    onValueChange={(value) => setForm(prev => ({ ...prev, countryCode: value }))}
+                    disabled={dataLoading} // Disable while loading
+                  >
+                    <SelectTrigger className="w-full text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500">
+                      <SelectValue placeholder={dataLoading ? "Loading countries..." : "Select a country"} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-slate-200 shadow-md">                   
+                       {!dataLoading && countries.length === 0 && (
+                         <SelectItem value="no-countries" disabled className="text-slate-500">
+                           No countries found
+                         </SelectItem>
+                       )}        
+                       {countries.map((country) => (
+                        <SelectItem
+                          key={country.id}
+                          value={country.code}
+                          className="text-slate-800 focus:bg-slate-100 focus:text-slate-900 hover:bg-slate-100 hover:text-slate-900 cursor-pointer" // Add text, focus, hover styles
+                        >
+                          {country.name} ({country.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
               <div>

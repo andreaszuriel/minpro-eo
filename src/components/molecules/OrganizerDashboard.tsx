@@ -18,8 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
-import type { Event, Transaction, TransactionStatus } from '@prisma/client';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts';
+import type { Event, Transaction, TransactionStatus, Genre, Country } from '@prisma/client';import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts';
 import DashboardLayout from '@/components/atoms/DashboardLayout';
 import { User } from "next-auth";
 import EventsTab from '@/components/atoms/DashboardEvents'; 
@@ -38,12 +37,18 @@ interface OrganizerDashboardProps {
   };
 }
 
-type ExtendedEvent = Event & {
-  soldSeats: number;
-  totalRevenue: number;
-  averageRating: number | null;
+type ExtendedEvent = Omit<Event, 'genreId' | 'countryId'> & { 
+  genre: Genre;          
+  country: Country;     
+  soldSeats: number;     
+  totalRevenue: number;  
+  averageRating: number | null; 
 };
 
+type FetchedEvent = Event & {
+  genre: Genre;   
+  country: Country; 
+};
 
 type ExtendedTransaction = Transaction & {
   event: { title: string; image: string | null };
@@ -66,8 +71,8 @@ const COLORS = ['#4F46E5', '#F59E0B', '#10B981', '#EC4899', '#8B5CF6'];
 
 // --- Utility functions specific to dashboard data processing ---
 
-function processEvents(events: Event[], transactions: ExtendedTransaction[]): ExtendedEvent[] {
-  return events.map(event => {
+function processEvents(fetchedEvents: FetchedEvent[], transactions: ExtendedTransaction[]): ExtendedEvent[] {
+  return fetchedEvents.map(event => {
     const eventTransactions = transactions.filter(t => t.eventId === event.id && t.status === 'PAID');
     const soldSeats = eventTransactions.reduce((sum, t) => sum + t.ticketQuantity, 0);
     const totalRevenue = eventTransactions.reduce((sum, t) => sum + t.finalPrice, 0);
@@ -308,7 +313,7 @@ function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents
         <CardHeader><CardTitle className="text-primary-700 text-lg">Upcoming Events</CardTitle></CardHeader> 
         <CardContent>
           <div className="space-y-4">
-            {upcomingEvents.slice(0, 3).map(event => ( // Limit to 3 upcoming
+            {upcomingEvents.slice(0, 3).map(event => ( // Limit to 3 upcomin`g`
               <Link href={`/organizer/events/edit/${event.id}`} key={event.id} className="block hover:bg-gray-50 rounded-lg border border-gray-200 p-4 transition-colors">
                   <div className="flex items-center">
                     <div className="relative mr-4 h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg"> 
@@ -459,7 +464,7 @@ function TransactionsTab({ transactions: initialTransactions }: { transactions: 
                 className="bg-primary-400 text-white
                   data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
                   data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
-                  duration-200 text-xs" /* Adjusted size */
+                  duration-200 text-xs" 
               >
                 <SelectItem
                   value="ALL"
@@ -559,29 +564,29 @@ function TransactionsTab({ transactions: initialTransactions }: { transactions: 
           )}
         </CardContent>
       </Card>
-       {/* Transaction Details Modal (Remains mostly the same, ensure styling/content is good) */}
+       {/* Transaction Details Modal */}
        {isDetailsOpen && selectedTransaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-200" onClick={() => setIsDetailsOpen(false)}> {/* Added backdrop click close */}
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}> {/* Added animation, flex col */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-200" onClick={() => setIsDetailsOpen(false)}> 
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}> 
             <div className="flex items-center justify-between mb-4 border-b pb-3">
               <h3 className="text-lg font-semibold text-primary-800">Transaction #{selectedTransaction.id}</h3>
-               <Button variant="ghost" size="icon" onClick={() => setIsDetailsOpen(false)} className="h-7 w-7 text-gray-500 hover:bg-gray-100"> {/* Adjusted size */}
+               <Button variant="ghost" size="icon" onClick={() => setIsDetailsOpen(false)} className="h-7 w-7 text-gray-500 hover:bg-gray-100">
                  <XCircle className="h-5 w-5" />
                </Button>
             </div>
-            <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-4"> {/* Added overflow-y-auto */}
+            <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-4"> 
                 <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                    <h4 className="font-medium text-gray-700 text-sm mb-1">Customer Details</h4> {/* Adjusted size/margin */}
-                    <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-xs"> {/* Adjusted size */}
+                    <h4 className="font-medium text-gray-700 text-sm mb-1">Customer Details</h4> 
+                    <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-xs"> 
                     <span className="text-gray-500">Name:</span><span className="font-medium break-words">{selectedTransaction.user.name || 'Anonymous'}</span>
                     <span className="text-gray-500">Email:</span><span className="font-medium break-words">{selectedTransaction.user.email}</span>
                     <span className="text-gray-500">Purchase Date:</span><span className="font-medium">{format(new Date(selectedTransaction.createdAt), 'PPp')}</span>
                     </div>
                 </div>
                 <div>
-                    <h4 className="font-medium text-gray-700 text-sm mb-1">Transaction Details</h4> {/* Adjusted size/margin */}
-                    <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-xs"> {/* Adjusted size */}
+                    <h4 className="font-medium text-gray-700 text-sm mb-1">Transaction Details</h4> 
+                    <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-xs"> 
                     <span className="text-gray-500">Event:</span><span className="font-medium break-words">{selectedTransaction.event.title}</span>
                     <span className="text-gray-500">Ticket Type:</span><span className="font-medium">{selectedTransaction.tierType}</span>
                     <span className="text-gray-500">Quantity:</span><span className="font-medium">{selectedTransaction.ticketQuantity}</span>
@@ -602,22 +607,22 @@ function TransactionsTab({ transactions: initialTransactions }: { transactions: 
                 </div>
                 </div>
                 {selectedTransaction.paymentProof && (
-                <div className="mt-3"> {/* Adjusted margin */}
+                <div className="mt-3"> 
                     <h4 className="font-medium text-gray-700 text-sm mb-1">Payment Proof</h4> {/* Adjusted size/margin */}
                     <div className="mt-1 max-h-60 w-full overflow-hidden rounded-md border border-gray-200 flex justify-center items-center bg-gray-50 p-1"> {/* Adjusted size/padding */}
                     <a href={selectedTransaction.paymentProof} target="_blank" rel="noopener noreferrer" className="block max-h-full max-w-full">
                         <Image
                             src={selectedTransaction.paymentProof}
                             alt="Payment Proof"
-                            width={300} // Reduced default width
-                            height={200} // Reduced default height
+                            width={300} 
+                            height={200} 
                             className="max-h-full max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
                         />
                     </a>
                     </div>
                 </div>
                 )}
-             </div> {/* End scrollable content */}
+             </div> 
              {/* Footer Actions */}
               <div className="mt-4 border-t pt-4 flex justify-end space-x-2">
                  {selectedTransaction.status === 'WAITING_ADMIN' && (
@@ -645,7 +650,7 @@ function TransactionsTab({ transactions: initialTransactions }: { transactions: 
 }
 
 
-// Statistics Tab (Remains the same)
+// Statistics Tab 
 function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, timeRange, setTimeRange }: {
   salesData: SalesData;
   statusDistribution: StatusDistribution;
@@ -792,7 +797,7 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
 export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
   const { data: session, status } = useSession();
   const [events, setEvents] = useState<ExtendedEvent[]>([]);
-  const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]);
+    const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('month');
 
@@ -820,41 +825,35 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
       const fetchData = async () => {
         setLoading(true);
         try {
-           // Fetch both concurrently
            const [eventsRes, transactionsRes] = await Promise.all([
              fetch(`/api/events?userId=${userId}`).then(res => res.ok ? res.json() : Promise.reject(new Error(`Event fetch failed: ${res.statusText}`))),
              fetch(`/api/transactions?userId=${userId}`).then(res => res.ok ? res.json() : Promise.reject(new Error(`Transaction fetch failed: ${res.statusText}`))),
            ]);
 
-           const fetchedTransactions = transactionsRes.transactions || [];
-           const fetchedEvents = eventsRes.events || [];
+           // Cast or ensure fetchedEvents matches the expected input type for processEvents
+           const fetchedEvents: FetchedEvent[] = eventsRes.events || []; 
+           const fetchedTransactions: ExtendedTransaction[] = transactionsRes.transactions || []; 
 
-           // Process events after fetching transactions
+           // Process events 
            const processedEvents = processEvents(fetchedEvents, fetchedTransactions);
 
-           setEvents(processedEvents);
-           setTransactions(fetchedTransactions);
-
-           // Calculate statistics derived from the processed data
-           setStatistics(calculateStatistics(processedEvents, fetchedTransactions));
+           setEvents(processedEvents); 
+           setTransactions(fetchedTransactions); 
+           setStatistics(calculateStatistics(processedEvents, fetchedTransactions)); 
 
          } catch (error) {
            console.error('Error fetching dashboard data:', error);
-           // Set empty states on error
            setEvents([]);
            setTransactions([]);
            setStatistics({ totalEvents: 0, totalTransactions: 0, totalRevenue: 0, totalSeats: 0, soldSeats: 0 });
-           // Optionally show a toast error message
          } finally {
            setLoading(false);
          }
       };
       fetchData();
     } else if (status === 'unauthenticated') {
-         setLoading(false); // Stop loading if not authenticated
-         // Optional: redirect to login
+         setLoading(false);
     }
-     // Explicitly depend on status and userId
   }, [status, user?.id, session?.user?.id]);
 
 

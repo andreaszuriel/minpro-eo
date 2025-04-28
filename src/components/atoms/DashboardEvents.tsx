@@ -5,7 +5,7 @@ import {
   Search, Plus, Edit, Trash, AlertCircle
 } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,13 +26,14 @@ import {
   AlertDialogCancel,
   AlertDialogAction
 } from "@/components/ui/alert-dialog";
-import { formatCurrency } from "@/lib/utils"; 
+import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Event } from '@prisma/client'; 
+import type { Event as PrismaEvent, Genre, Country } from '@prisma/client'
 
-// --- Define ExtendedEvent Type ---
-
-type ExtendedEvent = Event & {
+// --- Define ExtendedEvent Type  ---
+type ExtendedEvent = Omit<PrismaEvent, 'genreId' | 'countryId'> & {
+  genre: Genre; 
+  country: Country; 
   soldSeats: number;
   totalRevenue: number;
   averageRating: number | null;
@@ -46,8 +47,8 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(""); 
-  const [filter, setFilter] = useState("all"); 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("all");
 
   // Function to handle edit
   const handleEdit = (eventId: number, e?: React.MouseEvent) => {
@@ -68,7 +69,7 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api//events/${eventToDelete}`, {
+      const response = await fetch(`/api/events/${eventToDelete}`, { 
         method: 'DELETE',
       });
 
@@ -113,13 +114,17 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
       if (filter === 'upcoming') return startDate > now;
       if (filter === 'past') return startDate <= now;
       if (filter === 'soldout') return isSoldOut;
-      return true; 
+      return true;
     })
-    .filter(event =>
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.genre.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    .filter(event => {
+        const lowerSearchTerm = searchTerm.toLowerCase();      
+        const genreName = event.genre?.name?.toLowerCase() ?? ''; 
+        return (
+            event.title.toLowerCase().includes(lowerSearchTerm) ||
+            event.location.toLowerCase().includes(lowerSearchTerm) ||
+            genreName.includes(lowerSearchTerm) 
+        );
+    });
 
 
   return (
@@ -160,20 +165,22 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
         </CardHeader>
         <CardContent>
           {filteredEvents.length === 0 ? (
-            <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center">
+             <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center">
               <Calendar className="mb-2 h-10 w-10 text-gray-400" />
               <h3 className="mb-1 text-lg font-medium">
-                {events.length === 0 ? "No Events Found" : "No Matching Events"}
+                {initialEvents.length === 0 ? "No Events Found" : "No Matching Events"} {/* Check initialEvents here */}
               </h3>
               <p className="mb-4 text-gray-500">
-                {events.length === 0
+                {initialEvents.length === 0
                   ? "You haven't created any events yet."
                   : "Try adjusting your search or filters."}
               </p>
-              {events.length === 0 && ( 
+              {/* Make sure `user.id` is available in this scope or passed as a prop if needed */}
+              {/* Example: Assuming organizerId is available */}
+              {initialEvents.length === 0 && (
                  <Button
                     className="bg-secondary-600 hover:bg-secondary-700"
-                    onClick={() => router.push('/organizer/events/${user.id}/create')} 
+                    onClick={() => router.push(`/organizer/events/create`)} 
                  >
                    <Plus className="mr-2 h-4 w-4" />Create Your First Event
                  </Button>
@@ -189,26 +196,26 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                     onClick={() => setExpandedEventId(expandedEventId === event.id ? null : event.id)}
                   >
                     {/* Left side: Image, Title, Details */}
-                    <div className="flex items-center flex-1 min-w-0 mr-4"> 
-                        <div className="relative mr-4 h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg"> 
+                    <div className="flex items-center flex-1 min-w-0 mr-4">
+                        <div className="relative mr-4 h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
                             {event.image ?
                             <Image src={event.image} alt={event.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" /> :
                             <Calendar className="h-full w-full bg-gray-200 p-4 text-gray-400" />
                             }
                         </div>
-                        <div className="min-w-0"> 
-                            <h3 className="font-medium truncate">{event.title}</h3> 
+                        <div className="min-w-0">
+                            <h3 className="font-medium truncate">{event.title}</h3>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
                             <div className="flex items-center"><Calendar className="mr-1 h-3 w-3" />{format(new Date(event.startDate), 'MMM d, yyyy')}</div>
                             <div className="flex items-center"><Clock className="mr-1 h-3 w-3" />{format(new Date(event.startDate), 'h:mm a')}</div>
-                            <div className="flex items-center truncate"><MapPin className="mr-1 h-3 w-3 flex-shrink-0" />{event.location}</div> 
+                            <div className="flex items-center truncate"><MapPin className="mr-1 h-3 w-3 flex-shrink-0" />{event.location}</div>
                             </div>
                         </div>
                     </div>
 
 
                     {/* Right side: Actions, Stats, Chevron */}
-                    <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0"> 
+                    <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                       {/* Action buttons that appear on hover */}
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
                         <Button
@@ -232,14 +239,14 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                       </div>
 
                       {/* Stats */}
-                      <div className="text-right hidden sm:block"> 
+                      <div className="text-right hidden sm:block">
                         <div className="font-medium text-primary-600">{formatCurrency(event.totalRevenue || 0, 'IDR')}</div>
                         <div className="text-xs text-gray-500">{event.soldSeats || 0}/{event.seats} tickets</div>
                       </div>
 
                       {/* Chevron and Text */}
                       <div className="flex items-center">
-                        <span className="text-xs text-primary-600 mr-1 hidden md:inline group-hover:inline transition-all"> 
+                        <span className="text-xs text-primary-600 mr-1 hidden md:inline group-hover:inline transition-all">
                           {expandedEventId === event.id ? "Hide" : "Details"}
                         </span>
                         {expandedEventId === event.id ?
@@ -257,10 +264,11 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                         {/* Column 1: Event Details */}
                         <div className="space-y-2">
                           <h4 className="font-medium text-primary-700">Event Details</h4>
-                          <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-sm"> 
-                            <span className="text-gray-500">Genre:</span><span className="font-medium text-black break-words">{event.genre}</span>
-                            <span className="text-gray-500">Start Date:</span><span className="font-medium text-black">{format(new Date(event.startDate), 'PPp')}</span> 
-                            <span className="text-gray-500">End Date:</span><span className="font-medium text-black">{format(new Date(event.endDate), 'PPp')}</span> 
+                          <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-sm">
+                            {/* Display genre name using optional chaining and fallback */}
+                            <span className="text-gray-500">Genre:</span><span className="font-medium text-black break-words">{event.genre?.name ?? 'N/A'}</span> {/* <-- MODIFIED */}
+                            <span className="text-gray-500">Start Date:</span><span className="font-medium text-black">{format(new Date(event.startDate), 'PPp')}</span>
+                            <span className="text-gray-500">End Date:</span><span className="font-medium text-black">{format(new Date(event.endDate), 'PPp')}</span>
                             <span className="text-gray-500">Location:</span><span className="font-medium text-black break-words">{event.location}</span>
                             <span className="text-gray-500">Capacity:</span><span className="font-medium text-black">{event.seats} seats</span>
                           </div>
@@ -268,7 +276,7 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                         {/* Column 2: Sales Summary */}
                         <div className="space-y-2">
                           <h4 className="font-medium text-primary-700">Sales Summary</h4>
-                          <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-sm"> 
+                          <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-sm">
                             <span className="text-gray-500">Tickets Sold:</span><span className="font-medium text-black">{event.soldSeats || 0}</span>
                             <span className="text-gray-500">Available:</span><span className="font-medium text-black">{event.seats - (event.soldSeats || 0)}</span>
                             <span className="text-gray-500">Revenue:</span><span className="font-medium text-black">{formatCurrency(event.totalRevenue || 0, 'IDR')}</span>
@@ -295,7 +303,7 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                             </Button>
                             <Button
                               variant="outline"
-                              className="w-full bg-red-50 border-red-300 text-red-700 hover:bg-red-100 justify-start" 
+                              className="w-full bg-red-50 border-red-300 text-red-700 hover:bg-red-100 justify-start"
                               onClick={() => openDeleteDialog(event.id)}
                             >
                               <Trash className="mr-2 h-4 w-4" />
