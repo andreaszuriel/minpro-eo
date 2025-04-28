@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
 
-    // --- Input Validation (Basic Example - Add more robust validation) ---
+    // --- Input Validation (Basic - Add more robust validation) ---
     if (!data.title || !data.artist || !data.genreName || !data.startDate || !data.endDate || !data.location || !data.countryCode || !data.seats || !data.organizerId || !data.tiers || !data.price) {
         return NextResponse.json({ error: "Missing required event fields" }, { status: 400 });
     }

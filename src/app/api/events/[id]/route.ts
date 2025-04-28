@@ -26,7 +26,6 @@ export async function GET(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // The event object now contains nested 'genre' and 'country' objects
     return NextResponse.json({ event }, { status: 200 });
   } catch (error) {
     console.error("Error fetching event:", error);
