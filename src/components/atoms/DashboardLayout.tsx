@@ -1,4 +1,4 @@
-import { JSX, useState } from 'react';
+import { JSX, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { format } from 'date-fns';
@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ProfileModal from '@/components/atoms/ProfileModal';
 import { Eye, EyeOff, Copy, Loader2, BadgeAlert } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface DashboardLayoutProps {
   user: {
@@ -33,12 +34,23 @@ export default function DashboardLayout({ user, tabs, renderTabContent, actionBu
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
+    image: user.image || '',
   });
   const [showEmail, setShowEmail] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const isOrganizer = user.role === 'organizer';
+
+  // Update profileData when user data changes
+  useEffect(() => {
+    setProfileData(prevData => ({
+      ...prevData,
+      name: user.name || '',
+      email: user.email || '',
+      image: user.image || '',
+    }));
+  }, [user]);
 
   // Authentication check moved to Dashboard Layout
   if (status === 'loading') {
@@ -83,8 +95,19 @@ export default function DashboardLayout({ user, tabs, renderTabContent, actionBu
 
   const updateProfile = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    if (profileData.newPassword && (profileData.newPassword !== profileData.confirmPassword || !profileData.currentPassword)) {
-      alert(profileData.newPassword !== profileData.confirmPassword ? "New passwords don't match!" : "Please enter your current password.");
+    
+    // Password validation
+    if (profileData.newPassword && (profileData.newPassword !== profileData.confirmPassword)) {
+      toast.error('Password Error', {
+        description: 'New passwords do not match',
+      });
+      return;
+    }
+    
+    if (profileData.newPassword && !profileData.currentPassword) {
+      toast.error('Password Error', {
+        description: 'Please enter your current password',
+      });
       return;
     }
     
@@ -92,7 +115,11 @@ export default function DashboardLayout({ user, tabs, renderTabContent, actionBu
     
     const payload = {
       name: profileData.name,
-      ...(profileData.newPassword && { currentPassword: profileData.currentPassword, newPassword: profileData.newPassword }),
+      image: profileData.image || undefined,
+      ...(profileData.newPassword && { 
+        currentPassword: profileData.currentPassword, 
+        newPassword: profileData.newPassword 
+      }),
     };
     
     try {
@@ -102,23 +129,33 @@ export default function DashboardLayout({ user, tabs, renderTabContent, actionBu
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || 'Failed to update profile');
+        throw new Error(data.message || 'Failed to update profile');
       }
 
       setIsProfileModalOpen(false);
-      setProfileData((prev) => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+      setProfileData((prev) => ({ 
+        ...prev, 
+        currentPassword: '', 
+        newPassword: '', 
+        confirmPassword: '' 
+      }));
 
       // Update the session if the update function exists
       if (typeof update === 'function') {
         await update();
       }
 
-      alert('Profile updated successfully!');
+      toast.success('Success', {
+        description: 'Profile updated successfully',
+      });
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert(error instanceof Error ? error.message : 'An error occurred');
+      toast.error('Update Failed', {
+        description: error instanceof Error ? error.message : 'An error occurred',
+      });
     } finally {
       setLoading(false);
     }
@@ -129,6 +166,7 @@ export default function DashboardLayout({ user, tabs, renderTabContent, actionBu
       navigator.clipboard.writeText(user.referralCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      toast.success('Referral code copied to clipboard');
     }
   };
 
@@ -137,14 +175,14 @@ export default function DashboardLayout({ user, tabs, renderTabContent, actionBu
       <div className="mb-8">
         <div className="flex flex-col md:flex-row gap-6">
           <div className="flex flex-col items-center">
-            {user.image ? (
+            {profileData.image ? (
               <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-primary-600">
-                <Image src={user.image} alt={user.name || 'Profile'} width={96} height={96} className="object-cover w-full h-full" />
+                <Image src={profileData.image} alt={profileData.name || 'Profile'} width={96} height={96} className="object-cover w-full h-full" />
               </div>
             ) : (
               <div className="w-24 h-24 rounded-full bg-primary-100 flex items-center justify-center border-2 border-primary-600">
                 <span className="text-4xl font-bold text-primary-600">
-                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  {profileData.name ? profileData.name.charAt(0).toUpperCase() : 'U'}
                 </span>
               </div>
             )}

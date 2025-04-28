@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { verifyPassword, saltAndHashPassword } from "@/utils/password";
 
-
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -34,22 +33,26 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
     const userId = session.user.id;
-    const { name, currentPassword, newPassword } = await request.json();
+    const { name, currentPassword, newPassword, image } = await request.json();
 
     // 2) Fetch user from database
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, password: true },
+      select: { id: true, name: true, password: true, image: true },
     });
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
     // 3) Build update payload
-    const updateData: { name?: string; password?: string } = {};
+    const updateData: { name?: string; password?: string; image?: string } = {};
 
     if (name && name !== user.name) {
       updateData.name = name;
+    }
+
+    if (image && image !== user.image) {
+      updateData.image = image;
     }
 
     if (newPassword && currentPassword) {
@@ -77,7 +80,7 @@ export async function PUT(request: NextRequest) {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData,
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, email: true, role: true, image: true },
     });
 
     // 5) Generate a new JWT with updated user data

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toaster, toast } from 'sonner';
@@ -11,8 +11,11 @@ import {
   XCircle,
   Shield,
   EyeOff,
-  Eye
+  Eye,
+  Upload,
+  Image as ImageIcon
 } from "lucide-react";
+import Image from "next/image";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -23,6 +26,7 @@ interface ProfileModalProps {
     currentPassword: string;
     newPassword: string;
     confirmPassword: string;
+    image?: string;
   };
   handleProfileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   updateProfile: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -38,6 +42,80 @@ export default function ProfileModal({
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const [uploading, setUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(profileData.image || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check if the file is an image
+    if (!file.type.startsWith('image/')) {
+      toast.error("Invalid file type", {
+        description: "Please upload an image file (JPEG, PNG, etc.)",
+      });
+      return;
+    }
+
+    // Create a temporary preview
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+
+    // Prepare form data for upload
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      setUploading(true);
+      
+      // Send the image to the server
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const data = await response.json();
+      
+      // Update the profile data with the new image URL
+      const imageChangeEvent = {
+        target: {
+          name: 'image',
+          value: data.url
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      
+      handleProfileChange(imageChangeEvent);
+      
+      toast.success("Image uploaded", {
+        description: "Your profile picture has been updated.",
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Upload failed", {
+        description: error instanceof Error ? error.message : "Failed to upload your image",
+      });
+      
+      // Reset preview if upload failed
+      if (profileData.image) {
+        setImagePreview(profileData.image);
+      } else {
+        setImagePreview(null);
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleSaveChanges = (e: React.MouseEvent<HTMLButtonElement>) => {
     updateProfile(e);
@@ -57,8 +135,18 @@ export default function ProfileModal({
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className="bg-white text-primary-700 rounded-full p-2 mr-3 shadow-lg">
-                  <User className="h-5 w-5" />
+                <div className="border-2 border-white text-primary-700 rounded-full  mr-3 shadow-lg overflow-hidden">
+                  {imagePreview ? (
+                    <Image 
+                      src={imagePreview} 
+                      alt="Profile" 
+                      width={20} 
+                      height={20} 
+                      className="h-12 w-12 object-cover rounded-full"
+                    />
+                  ) : (
+                    <User className="h-2 w-2" />
+                  )}
                 </div>
                 <h3 className="text-xl font-bold">Edit Profile</h3>
               </div>
@@ -103,6 +191,59 @@ export default function ProfileModal({
                   <Info className="h-3 w-3 mr-1" />
                   Email cannot be changed
                 </p>
+              </div>
+
+              {/* Profile Picture */}
+              <div>
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                  <ImageIcon className="h-4 w-4 mr-2 text-primary-600" />
+                  Profile Picture
+                </label>
+                
+                <div className="flex items-center space-x-4">
+                  <div className="relative flex-shrink-0">
+                    <div className="h-16 w-16 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+                      {imagePreview ? (
+                        <Image 
+                          src={imagePreview} 
+                          alt="Profile" 
+                          width={64} 
+                          height={64}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-8 w-8 text-slate-400" />
+                      )}
+                    </div>
+                    {uploading && (
+                      <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center">
+                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-grow">
+                    <Button
+                      type="button"
+                      onClick={triggerFileUpload}
+                      disabled={uploading}
+                      className="w-full bg-slate-100 hover:bg-slate-200 text-gray-700 border border-slate-200 hover:border-slate-300"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {uploading ? 'Uploading...' : 'Upload Picture'}
+                    </Button>
+                    <p className="mt-1 text-xs text-gray-500">
+                      JPEG, PNG or GIF (max 2MB)
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
