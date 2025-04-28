@@ -9,27 +9,44 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  name           String?
-  email          String          @unique
-  password       String?
-  referredBy     String?
-  points         Int             @default(0)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  role           UserRole        @default(customer)
-  emailVerified  DateTime?
-  image          String?
-  referralCode   String?         @unique
-  accounts       Account[]
-  authenticators Authenticator[]
-  coupons        Coupon[]
-  events         Event[]         @relation("OrganizerEvents")
-  reviews        Review[]
-  sessions       Session[]
-  transactions   Transaction[]
+  id                String            @id @default(cuid())
+  name              String?
+  email             String            @unique
+  password          String?
+  referredBy        String?
+  points            Int               @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  role              UserRole          @default(customer)
+  emailVerified     DateTime?
+  image             String?
+  referralCode      String?           @unique
+
+  accounts          Account[]
+  authenticators    Authenticator[]
+  coupons           Coupon[]
+  events            Event[]           @relation("OrganizerEvents")
+  pointTransactions PointTransaction[]
+  reviews           Review[]
+  sessions          Session[]
+  transactions      Transaction[]
+  tickets           Ticket[]          // ➔ New relation to Ticket
 
   @@index([email])
+}
+
+model PointTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  points      Int
+  description String?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  isExpired   Boolean  @default(false)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Account {
@@ -91,14 +108,32 @@ model Authenticator {
   @@index([userId])
 }
 
+model Country {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  code      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  events    Event[]
+}
+
+model Genre {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  events    Event[]
+}
+
 model Event {
   id            Int           @id @default(autoincrement())
   title         String
-   artist String
-  genre         String
+  artist        String
+  genreId       Int
   startDate     DateTime
   endDate       DateTime
   location      String
+  countryId     Int
   seats         Int
   tiers         Json
   image         String?
@@ -108,11 +143,17 @@ model Event {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   price         Json
+
+  genre         Genre         @relation(fields: [genreId], references: [id])
+  country       Country       @relation(fields: [countryId], references: [id])
   organizer     User          @relation("OrganizerEvents", fields: [organizerId], references: [id])
   reviews       Review[]
   transactions  Transaction[]
+  tickets       Ticket[]      // ➔ New relation to Ticket
 
   @@index([organizerId])
+  @@index([genreId])
+  @@index([countryId])
 }
 
 model Transaction {
@@ -132,11 +173,33 @@ model Transaction {
   voucherUrl      String?
   status          TransactionStatus @default(PENDING)
   updatedAt       DateTime          @updatedAt
+
   event           Event             @relation(fields: [eventId], references: [id])
   user            User              @relation(fields: [userId], references: [id])
+  tickets         Ticket[]          // ➔ New relation to Ticket
 
   @@index([userId])
   @@index([eventId])
+}
+
+model Ticket {
+  id             String   @id @default(cuid())
+  serialCode     String   @unique
+  userId         String
+  eventId        Int
+  transactionId  Int
+  tierType       String
+  isUsed         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User        @relation(fields: [userId], references: [id])
+  event          Event       @relation(fields: [eventId], references: [id])
+  transaction    Transaction @relation(fields: [transactionId], references: [id])
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([transactionId])
 }
 
 model Review {
@@ -147,6 +210,7 @@ model Review {
   comment   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   event     Event    @relation(fields: [eventId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
 
@@ -156,14 +220,16 @@ model Review {
 }
 
 model Coupon {
-  id        Int      @id @default(autoincrement())
-  code      String   @unique
-  userId    String
-  discount  Int
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
+  id         Int      @id @default(autoincrement())
+  code       String   @unique
+  userId     String
+  discount   Int
+  expiresAt  DateTime
+  isReferral Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
