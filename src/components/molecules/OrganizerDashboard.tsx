@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import {
@@ -9,21 +8,21 @@ import {
   Loader2, ChartArea,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import type { Event, Transaction, TransactionStatus, Genre, Country } from '@prisma/client';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts';
 import DashboardLayout from '@/components/atoms/DashboardLayout';
 import { User } from "next-auth";
 import EventsTab from '@/components/atoms/DashboardEvents';
-import DashboardTransactions, { ExtendedTransaction } from '@/components/atoms/DashboardTransactions'; 
+import DashboardTransactions, { ExtendedTransaction } from '@/components/atoms/DashboardTransactions';
+import DashboardOverview from '@/components/atoms/DashboardOverview'; 
+import DashboardStats from '@/components/atoms/DashboardStats'; 
 
 // --- Interfaces  ---
-interface OrganizerDashboardProps {
+// TODO: Move these interfaces to a separate file (e.g., @/types/dashboard.ts) for better organization
+export interface OrganizerDashboardProps {
   user: User & {
     id: string;
     name: string | null;
@@ -35,17 +34,7 @@ interface OrganizerDashboardProps {
   };
 }
 
-interface OverviewTabProps { 
-  statistics: StatSummary;
-  salesData: SalesData;
-  statusDistribution: StatusDistribution;
-  upcomingEvents: ExtendedEvent[];
-  timeRange: string;
-  setTimeRange: (value: string) => void;
-  userId: string; 
-}
-
-type ExtendedEvent = Omit<Event, 'genreId' | 'countryId'> & {
+export type ExtendedEvent = Omit<Event, 'genreId' | 'countryId'> & {
   genre: Genre;
   country: Country;
   soldSeats: number;
@@ -53,12 +42,12 @@ type ExtendedEvent = Omit<Event, 'genreId' | 'countryId'> & {
   averageRating: number | null;
 };
 
-type FetchedEvent = Event & {
+export type FetchedEvent = Event & {
   genre: Genre;
   country: Country;
 };
 
-type StatSummary = {
+export type StatSummary = {
   totalEvents: number;
   totalTransactions: number;
   totalRevenue: number;
@@ -66,20 +55,19 @@ type StatSummary = {
   soldSeats: number;
 };
 
-type SalesData = { date: string; sales: number; revenue: number }[];
-type StatusDistribution = { name: string; value: number }[];
-type EventPerformanceData = { name: string; revenue: number; ticketsSold: number }[];
-
-const COLORS = ['#4F46E5', '#F59E0B', '#10B981', '#EC4899', '#8B5CF6'];
+export type SalesData = { date: string; sales: number; revenue: number }[];
+export type StatusDistribution = { name: string; value: number }[];
+export type EventPerformanceData = { name: string; revenue: number; ticketsSold: number }[];
+export type { TransactionStatus };
 
 // --- Utility functions specific to dashboard data processing ---
-// Keep utilities used by Overview, Statistics, or data fetching
+// Keep utilities used for data fetching and processing in the main component
 function processEvents(fetchedEvents: FetchedEvent[], transactions: ExtendedTransaction[]): ExtendedEvent[] {
     return fetchedEvents.map(event => {
         const eventTransactions = transactions.filter(t => t.eventId === event.id && t.status === 'PAID');
         const soldSeats = eventTransactions.reduce((sum, t) => sum + t.ticketQuantity, 0);
         const totalRevenue = eventTransactions.reduce((sum, t) => sum + t.finalPrice, 0);
-        const averageRating = (event as any).averageRating ?? null;
+        const averageRating = (event as any).reviews?._avg?.rating ?? null;
         return { ...event, soldSeats, totalRevenue, averageRating };
     });
 }
@@ -102,25 +90,95 @@ function getSalesData(transactions: ExtendedTransaction[], timeRange: string): S
   };
   const { groupBy, display } = formats[timeRange as keyof typeof formats] || formats.month;
   const grouped: { [key: string]: { sales: number; revenue: number } } = {};
+  const endDate = new Date();
+  let startDate = new Date();
+
+  switch (timeRange) {
+    case 'year':
+      startDate.setFullYear(endDate.getFullYear() - 1);
+      startDate.setDate(1); // Start from beginning of the month one year ago
+      break;
+    case 'month':
+      startDate.setMonth(endDate.getMonth() - 1);
+      startDate.setDate(1); // Start from beginning of the previous month
+      break;
+    case 'week':
+      startDate.setDate(endDate.getDate() - 6); // Last 7 days including today
+      break;
+    default: // Default to month
+      startDate.setMonth(endDate.getMonth() - 1);
+      startDate.setDate(1);
+  }
+   startDate.setHours(0, 0, 0, 0); // Start of the day
+
   transactions.forEach(t => {
-    if (t.status === 'PAID') {
-      const dateKey = format(new Date(t.createdAt), groupBy);
+    const transactionDate = new Date(t.createdAt);
+    // Filter transactions within the selected time range and that are PAID
+    if (t.status === 'PAID' && transactionDate >= startDate && transactionDate <= endDate) {
+      const dateKey = format(transactionDate, groupBy);
       grouped[dateKey] = grouped[dateKey] || { sales: 0, revenue: 0 };
       grouped[dateKey].sales += t.ticketQuantity;
       grouped[dateKey].revenue += t.finalPrice;
     }
   });
-  
-  return Object.entries(grouped)
-         .map(([dateKey, data]) => ({ dateKey: dateKey, displayDate: format(new Date(dateKey), display), sales: data.sales, revenue: data.revenue }))
-         .sort((a, b) => new Date(a.dateKey).getTime() - new Date(b.dateKey).getTime())
-         .map(({displayDate, sales, revenue}) => ({ date: displayDate, sales, revenue })); 
+
+  // Create entries for all dates/months/weeks in the range, even if no sales
+  const allDateEntries: { dateKey: string; displayDate: string; sales: number; revenue: number }[] = [];
+  let currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+      const dateKey = format(currentDate, groupBy);
+      const displayDate = format(currentDate, display);
+      // Check if its already processed this key to avoid duplicates when groupBy isn't daily
+      if (!allDateEntries.some(entry => entry.dateKey === dateKey)) {
+         const data = grouped[dateKey] || { sales: 0, revenue: 0 };
+         allDateEntries.push({ dateKey, displayDate, sales: data.sales, revenue: data.revenue });
+      }
+      // Increment date based on the time range
+      if (timeRange === 'year') {
+          currentDate.setMonth(currentDate.getMonth() + 1); // Move to next month
+      } else {
+          currentDate.setDate(currentDate.getDate() + 1); // Move to next day for week/month display
+      }
+  }
+
+  if (timeRange === 'year') {
+       const monthlyEntries: { [key: string]: { displayDate: string; sales: number; revenue: number } } = {};
+       let loopDate = new Date(startDate);
+       while (loopDate <= endDate) {
+          const monthKey = format(loopDate, groupBy); 
+          const displayMonth = format(loopDate, display); 
+          if (!monthlyEntries[monthKey]) {
+              monthlyEntries[monthKey] = { displayDate: displayMonth, sales: 0, revenue: 0 };
+          }
+          // Find matching processed data and aggregate
+           if (grouped[monthKey]) {
+               monthlyEntries[monthKey].sales = grouped[monthKey].sales;
+               monthlyEntries[monthKey].revenue = grouped[monthKey].revenue;
+           }
+           loopDate.setMonth(loopDate.getMonth() + 1); // Increment month
+           loopDate.setDate(1); // Go to the first day of the next month
+       }
+        return Object.entries(monthlyEntries)
+           .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime()) // Sort by 'yyyy-MM' key
+           .map(([_, data]) => ({ date: data.displayDate, sales: data.sales, revenue: data.revenue }));
+  }
+
+ // For week/month range (daily granularity)
+ return allDateEntries
+          .sort((a, b) => new Date(format(new Date(a.dateKey), 'yyyy-MM-dd')).getTime() - new Date(format(new Date(b.dateKey), 'yyyy-MM-dd')).getTime()) // Ensure correct sorting by actual date
+          .map(({ displayDate, sales, revenue }) => ({ date: displayDate, sales, revenue }));
 }
 
 
 function getStatusDistribution(transactions: ExtendedTransaction[]): StatusDistribution {
     const statusCounts: Record<TransactionStatus, number> = { PENDING: 0, WAITING_ADMIN: 0, PAID: 0, EXPIRED: 0, CANCELED: 0 };
-    transactions.forEach(t => statusCounts[t.status]++);
+    transactions.forEach(t => {
+      // Ensure status exists in the map before incrementing
+      if (statusCounts.hasOwnProperty(t.status)) {
+         statusCounts[t.status]++;
+      }
+    });
     return Object.entries(statusCounts).map(([status, value]) => ({ name: formatStatus(status as TransactionStatus), value }));
 }
 
@@ -135,8 +193,7 @@ function getEventPerformanceData(events: ExtendedEvent[]): EventPerformanceData 
         }));
 }
 
-// Keep formatStatus and getStatusBadge here as they are passed as props
-// and might be used by Overview tab too
+// Keep formatStatus and getStatusBadge here as they are passed as props to DashboardTransactions
 function formatStatus(status: TransactionStatus): string {
   const statusMap: Record<TransactionStatus, string> = {
     PENDING: 'Pending',
@@ -156,340 +213,8 @@ function getStatusBadge(status: TransactionStatus) {
     EXPIRED: 'bg-gray-50 text-gray-600 border-gray-200',
     CANCELED: 'bg-red-50 text-red-600 border-red-200',
   };
-  return <Badge variant="outline" className={`${badgeStyles[status]} whitespace-nowrap`}>{formatStatus(status)}</Badge>;
-}
-
-
-// --- Sub-components for Tab Content ---
-
-// Overview Tab 
-function OverviewTab({ statistics, salesData, statusDistribution, upcomingEvents, timeRange, setTimeRange, userId }: OverviewTabProps) { // Destructure userId
-  return (
-    <div className="space-y-6">
-       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-primary-600 to-primary-700 text-white">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between text-sm font-medium">
-              <span>Total Revenue</span>
-              <BarChart3 className="h-4 w-4 opacity-80" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(statistics.totalRevenue, 'IDR')}</div>
-            <p className="mt-1 text-xs opacity-80">Across all events</p>
-          </CardContent>
-        </Card>
-        {/* Other Stat Cardss */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-primary-700 font-bold flex items-center justify-between text-sm">
-              <span>Events</span>
-              <Calendar className="h-4 w-4 text-primary-600" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-black text-2xl font-bold">{statistics.totalEvents}</div>
-            <p className="mt-1 text-xs text-gray-500">Created events</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-primary-700 font-bold flex items-center justify-between text-sm">
-              <span>Ticket Sales</span>
-              <ListChecks className="h-4 w-4 text-primary-600" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-             <div className="text-black text-2xl font-bold">{statistics.soldSeats}</div>
-            <p className="mt-1 text-xs text-gray-500">Out of {statistics.totalSeats} seats</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-primary-700 font-bold flex items-center justify-between text-sm">
-              <span>Transactions</span>
-              <PieChart className="h-4 w-4 text-primary-600" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-black text-2xl font-bold">{statistics.totalTransactions}</div>
-            <p className="mt-1 text-xs text-gray-500">Ticket transactions</p>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 text-primary-700 pb-2">
-          <CardTitle className="font-bold text-lg">Recent Sales</CardTitle>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-full sm:w-32 bg-primary-400 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors text-xs h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent
-              className="bg-primary-400 text-white
-                data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2
-                data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2
-                duration-200 text-xs"
-            >
-              <SelectItem
-                value="week"
-                className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors min-h-0 py-1.5"
-              >
-                This Week
-              </SelectItem>
-              <SelectItem
-                value="month"
-                 className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors min-h-0 py-1.5"
-              >
-                This Month
-              </SelectItem>
-              <SelectItem
-                value="year"
-                className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors min-h-0 py-1.5"
-              >
-                This Year
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </CardHeader>
-
-          <CardContent className="pt-2">
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis dataKey="date" fontSize={10} />
-                  <YAxis fontSize={10} />
-                  <Tooltip
-                    formatter={(value, name) => [name === 'revenue' ? formatCurrency(value as number, 'IDR') : value, name === 'revenue' ? 'Revenue' : 'Tickets']}
-                    labelStyle={{ fontSize: '12px' }}
-                    itemStyle={{ fontSize: '12px' }}
-                  />
-                  <Legend wrapperStyle={{fontSize: "11px"}}/>
-                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#4F46E5" fillOpacity={1} fill="url(#colorRevenue)" />
-                  <Area type="monotone" dataKey="sales" name="Tickets" stroke="#10B981" fillOpacity={1} fill="url(#colorSales)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-primary-700 text-lg">Transaction Status</CardTitle></CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie data={statusDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={80} fill="#8884d8" paddingAngle={2} dataKey="value" labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                     const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                     const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
-                     return (percent > 0.05) ? <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={10}>
-                       {`${(percent * 100).toFixed(0)}%`}
-                     </text> : null;
-                   }}>
-                    {statusDistribution.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                  </Pie>
-                  <Legend wrapperStyle={{fontSize: "11px"}}/>
-                   <Tooltip formatter={(value, name) => [`${value} transactions`, name]} labelStyle={{ fontSize: '12px' }} itemStyle={{ fontSize: '12px' }} />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      <Card>
-        <CardHeader><CardTitle className="text-primary-700 text-lg">Upcoming Events</CardTitle></CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {upcomingEvents.slice(0, 3).map(event => ( // Limit to 3 upcoming
-              <Link href={`/organizer/events/edit/${event.id}`} key={event.id} className="block hover:bg-gray-50 rounded-lg border border-gray-200 p-4 transition-colors">
-                  <div className="flex items-center">
-                    <div className="relative mr-4 h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg">
-                    {event.image ? <Image src={event.image} alt={event.title} fill className="object-cover" sizes="48px" /> : <Calendar className="h-full w-full bg-gray-200 p-3 text-gray-400" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-sm truncate">{event.title}</h3>
-                    <div className="flex items-center text-xs text-gray-500">
-                        <Calendar className="mr-1 h-3 w-3" />
-                        {format(new Date(event.startDate), 'MMM d, yyyy')}
-                    </div>
-                    </div>
-                    <div className="text-right ml-2 flex-shrink-0">
-                    <div className="font-medium text-primary-600 text-sm">{formatCurrency(event.totalRevenue || 0, 'IDR')}</div>
-                    <div className="text-xs text-gray-500">{event.soldSeats || 0}/{event.seats} tickets</div>
-                    </div>
-                </div>
-               </Link>
-            ))}
-            {upcomingEvents.length === 0 && (
-              <div className="flex h-24 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-4 text-center">
-                <p className="text-sm text-gray-500">No upcoming events scheduled</p>
-                <Link href={`/organizer/events/${userId}/create`}>
-                   <Button variant="outline" size="sm" className="mt-2 text-primary-600 text-xs h-7">
-                    <Plus className="mr-1 h-3 w-3" />Create an Event
-                   </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-
-// Statistics Tab 
-function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, timeRange, setTimeRange }: {
-  salesData: SalesData;
-  statusDistribution: StatusDistribution;
-  eventPerformanceData: EventPerformanceData;
-  timeRange: string;
-  setTimeRange: (value: string) => void;
-}) {
- 
-   return (
-    <Card>
-      <CardHeader><CardTitle className="text-primary-700 font-bold text-xl">Performance Statistics</CardTitle></CardHeader>
-      <CardContent>
-        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2"> {/* Adjusted grid for better layout */}
-
-          {/* Revenue Over Time */}
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 text-primary-700 pb-2">
-              <CardTitle className="font-bold text-lg">Revenue Over Time</CardTitle>
-               <Select value={timeRange} onValueChange={setTimeRange}>
-                 <SelectTrigger className="w-full sm:w-32 bg-primary-400 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors text-xs h-8">
-                   <SelectValue />
-                 </SelectTrigger>
-                 <SelectContent className="bg-primary-400 text-white data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 duration-200 text-xs">
-                   <SelectItem value="week" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors min-h-0 py-1.5">This Week</SelectItem>
-                   <SelectItem value="month" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors min-h-0 py-1.5">This Month</SelectItem>
-                   <SelectItem value="year" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors min-h-0 py-1.5">This Year</SelectItem>
-                 </SelectContent>
-               </Select>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                   <AreaChart data={salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                     <defs>
-                       <linearGradient id="colorRevenueStat" x1="0" y1="0" x2="0" y2="1">
-                         <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8}/>
-                         <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
-                       </linearGradient>
-                     </defs>
-                     <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                     <XAxis dataKey="date" fontSize={10} />
-                     <YAxis fontSize={10} />
-                      <Tooltip formatter={(value) => formatCurrency(value as number, 'IDR')} labelStyle={{ fontSize: '12px' }} itemStyle={{ fontSize: '12px' }} />
-                     <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#4F46E5" fillOpacity={1} fill="url(#colorRevenueStat)" />
-                   </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Ticket Sales Over Time */}
-          <Card>
-             <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 text-primary-700 pb-2">
-                <CardTitle className="font-bold text-lg">Ticket Sales Over Time</CardTitle>
-                {/* Use the same time range selector or have independent ones */}
-                 <Select value={timeRange} onValueChange={setTimeRange}>
-                   <SelectTrigger className="w-full sm:w-32 bg-primary-400 text-white hover:bg-white hover:text-primary-600 border border-primary-600 transition-colors text-xs h-8">
-                     <SelectValue />
-                   </SelectTrigger>
-                   <SelectContent className="bg-primary-400 text-white data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 duration-200 text-xs">
-                     <SelectItem value="week" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors min-h-0 py-1.5">This Week</SelectItem>
-                     <SelectItem value="month" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors min-h-0 py-1.5">This Month</SelectItem>
-                     <SelectItem value="year" className="hover:bg-white hover:text-primary-600 cursor-pointer transition-colors min-h-0 py-1.5">This Year</SelectItem>
-                   </SelectContent>
-                 </Select>
-             </CardHeader>
-            <CardContent className="pt-2">
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                     <defs>
-                       <linearGradient id="colorSalesStat" x1="0" y1="0" x2="0" y2="1">
-                         <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                         <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                       </linearGradient>
-                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0"/>
-                    <XAxis dataKey="date" fontSize={10}/>
-                    <YAxis fontSize={10}/>
-                     <Tooltip formatter={(value, name) => [value, 'Tickets Sold']} labelStyle={{ fontSize: '12px' }} itemStyle={{ fontSize: '12px' }} />
-                    <Area type="monotone" dataKey="sales" name="Tickets Sold" stroke="#10B981" fillOpacity={1} fill="url(#colorSalesStat)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Event Performance Comparison */}
-          <Card>
-             <CardHeader><CardTitle className="text-primary-700 font-bold text-lg">Top 5 Event Performance</CardTitle></CardHeader>
-            <CardContent>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={eventPerformanceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }} layout="vertical"> {/* Adjusted margins */}
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0"/>
-                    <XAxis type="number" fontSize={10}/>
-                    <YAxis type="category" dataKey="name" width={100} fontSize={10} interval={0}/> {/* Adjusted width, font size, interval */}
-                     <Tooltip
-                       formatter={(value, name) => [name === 'revenue' ? formatCurrency(value as number, 'IDR') : value, name === 'revenue' ? 'Revenue' : 'Tickets Sold']}
-                       labelStyle={{ fontSize: '12px' }}
-                       itemStyle={{ fontSize: '12px' }}
-                     />
-                    <Legend wrapperStyle={{fontSize: "11px"}}/>
-                    <Bar dataKey="revenue" name="Revenue" fill="#4F46E5" barSize={15}/> {/* Adjusted bar size */}
-                    <Bar dataKey="ticketsSold" name="Tickets Sold" fill="#10B981" barSize={15}/> {/* Adjusted bar size */}
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Transaction Status Distribution */}
-          <Card>
-            <CardHeader><CardTitle className="text-primary-700 font-bold text-lg">Transaction Status</CardTitle></CardHeader>
-            <CardContent>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                     <Pie data={statusDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={80} fill="#8884d8" paddingAngle={2} dataKey="value" labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                       const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                       const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                       const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
-                       return (percent > 0.05) ? <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={10}>
-                         {`${(percent * 100).toFixed(0)}%`}
-                       </text> : null;
-                     }}>
-                      {statusDistribution.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                    </Pie>
-                    <Legend wrapperStyle={{fontSize: "11px"}}/>
-                    <Tooltip formatter={(value, name) => [`${value} transactions`, name]} labelStyle={{ fontSize: '12px' }} itemStyle={{ fontSize: '12px' }} />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const style = badgeStyles[status] || 'bg-gray-100 text-gray-800 border-gray-300';
+  return <Badge variant="outline" className={`${style} whitespace-nowrap`}>{formatStatus(status)}</Badge>;
 }
 
 
@@ -497,9 +222,9 @@ function StatisticsTab({ salesData, statusDistribution, eventPerformanceData, ti
 export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
   const { data: session, status } = useSession();
   const [events, setEvents] = useState<ExtendedEvent[]>([]);
-  const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]); // State remains here
+  const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('month');
+  const [timeRange, setTimeRange] = useState('month'); 
 
   // Define Tabs for Organizer
   const tabs = [
@@ -510,37 +235,51 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
   ];
 
   // Define Action Button for Organizer
-  const actionButton = (
+  const actionButton = user?.id ? ( // Ensure user.id exists before creating link
     <Link href={`/organizer/events/${user.id}/create`} passHref>
       <Button className="bg-secondary-600 hover:bg-secondary-700 cursor-pointer">
         <Plus className="mr-2 h-5 w-5" />Create New Event
       </Button>
     </Link>
-  );
+  ) : null; // Render nothing if user.id is not available yet
 
-  // Fetch Data specific to Organizer (Remains the same)
+  // Fetch Data specific to Organizer
   useEffect(() => {
+    // Use authenticated user ID preferentially, fallback to session if needed (though should be same)
     const userId = user?.id || session?.user?.id;
     if (status === 'authenticated' && userId) {
       const fetchData = async () => {
         setLoading(true);
         try {
+          // Construct API URLs correctly
+          const eventsUrl = `/api/events?userId=${userId}`;
+          const transactionsUrl = `/api/transactions?userId=${userId}`; 
+
           const [eventsRes, transactionsRes] = await Promise.all([
-            fetch(`/api/events?userId=${userId}`).then(res => res.ok ? res.json() : Promise.reject(new Error(`Event fetch failed: ${res.statusText}`))),
-            fetch(`/api/transactions?userId=${userId}`).then(res => res.ok ? res.json() : Promise.reject(new Error(`Transaction fetch failed: ${res.statusText}`))),
+            fetch(eventsUrl).then(res => {
+              if (!res.ok) throw new Error(`Event fetch failed (${res.status}): ${res.statusText}`);
+              return res.json();
+            }),
+            fetch(transactionsUrl).then(res => {
+               if (!res.ok) throw new Error(`Transaction fetch failed (${res.status}): ${res.statusText}`);
+               return res.json();
+            }),
           ]);
 
-          const fetchedEvents: FetchedEvent[] = eventsRes.events || [];
-          const fetchedTransactions: ExtendedTransaction[] = transactionsRes.transactions || [];
+          // Add checks for expected data structure
+          const fetchedEvents: FetchedEvent[] = eventsRes?.events || [];
+          const fetchedTransactions: ExtendedTransaction[] = transactionsRes?.transactions || [];
 
           const processedEvents = processEvents(fetchedEvents, fetchedTransactions);
 
           setEvents(processedEvents);
-          setTransactions(fetchedTransactions); // Set the transactions state here
+          setTransactions(fetchedTransactions);
+          // Calculate initial statistics after data is fetched
           setStatistics(calculateStatistics(processedEvents, fetchedTransactions));
 
         } catch (error) {
           console.error('Error fetching dashboard data:', error);
+          // Reset state on error
           setEvents([]);
           setTransactions([]);
           setStatistics({ totalEvents: 0, totalTransactions: 0, totalRevenue: 0, totalSeats: 0, soldSeats: 0 });
@@ -550,18 +289,19 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
       };
       fetchData();
     } else if (status === 'unauthenticated') {
-      setLoading(false);
+       console.log("User not authenticated, skipping data fetch.");
+      setLoading(false); // Stop loading if not authenticated
+       // Optionally redirect or show a login message
     }
-    // Note: Include `user?.id` in dependency array if it might change
-  }, [status, user?.id, session?.user?.id]);
+  }, [status, user?.id]); // Rerun effect if status or user.id changes
 
 
-  // Derived State Calculation (Remains the same)
+  // State for calculated statistics (initialized)
   const [statistics, setStatistics] = useState<StatSummary>({
     totalEvents: 0, totalTransactions: 0, totalRevenue: 0, totalSeats: 0, soldSeats: 0
   });
 
-  // UseMemo hooks for derived data (Remains the same)
+  // UseMemo hooks for derived data (pass to child components)
   const salesData = useMemo(() => getSalesData(transactions, timeRange), [transactions, timeRange]);
   const statusDistribution = useMemo(() => getStatusDistribution(transactions), [transactions]);
   const eventPerformanceData = useMemo(() => getEventPerformanceData(events), [events]);
@@ -572,14 +312,13 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
     [events]
   );
 
-
-  // --- Render Tab Content Function (Updated for Transactions) ---
+  // --- Render Tab Content Function ---
   const renderTabContent = (activeTab: string) => {
     switch (activeTab) {
       case 'overview':
         return (
           <TabsContent value="overview" className="mt-0">
-            <OverviewTab
+            <DashboardOverview
               statistics={statistics}
               salesData={salesData}
               statusDistribution={statusDistribution}
@@ -591,19 +330,34 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
           </TabsContent>
         );
       case 'events':
-        // Assuming EventsTab expects 'ExtendedEvent[]'
-        return <TabsContent value="events" className="mt-0"><EventsTab events={events} /></TabsContent>;
-        case 'transactions':
-          return <TabsContent value="transactions" className="mt-0">
-                   <DashboardTransactions
-                     initialTransactions={transactions}
-                     formatStatus={formatStatus}
-                     getStatusBadge={getStatusBadge}
-                     formatCurrency={formatCurrency}
-                   />
-                 </TabsContent>;
+        return (
+            <TabsContent value="events" className="mt-0">
+                <EventsTab events={events} />
+            </TabsContent>
+        );
+      case 'transactions':
+        return (
+            <TabsContent value="transactions" className="mt-0">
+                <DashboardTransactions
+                    initialTransactions={transactions}
+                    formatStatus={formatStatus} 
+                    getStatusBadge={getStatusBadge} 
+                    formatCurrency={formatCurrency} 
+                />
+            </TabsContent>
+        );
       case 'statistics':
-        return <TabsContent value="statistics" className="mt-0"><StatisticsTab salesData={salesData} statusDistribution={statusDistribution} eventPerformanceData={eventPerformanceData} timeRange={timeRange} setTimeRange={setTimeRange} /></TabsContent>;
+        return (
+          <TabsContent value="statistics" className="mt-0">
+            <DashboardStats
+                salesData={salesData}
+                statusDistribution={statusDistribution}
+                eventPerformanceData={eventPerformanceData}
+                timeRange={timeRange}
+                setTimeRange={setTimeRange}
+            />
+          </TabsContent>
+        );
       default:
         return null;
     }
@@ -619,17 +373,37 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
     );
   }
 
-  // Ensure user object for layout has the expected properties
-  const layoutUser = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    createdAt: user.createdAt,
-    role: user.role,
-    referralCode: user.referralCode,
-    image: user.image,
-  };
+   // --- Unauthenticated State ---
+   if (status === 'unauthenticated') {
+     // Optional: Redirect to login or show a message
+     return (
+       <div className="flex h-screen items-center justify-center">
+         <p className="text-lg text-gray-600">Please log in to view your dashboard.</p>
+         {/* Optionally add a login button */}
+       </div>
+     );
+   }
 
+   // --- Authenticated but no user data yet (edge case) ---
+   if (!user?.id) {
+     // This might happen briefly if session is authenticated but prop hasn't updated
+      return (
+       <div className="flex h-screen items-center justify-center">
+         <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+         <span className="ml-3 text-lg font-medium text-gray-700">Initializing...</span>
+       </div>
+     );
+   }
+ // Ensure user object for layout has the expected properties 
+   const layoutUser = {
+     id: user.id,
+     name: user.name ?? 'Organizer', 
+     email: user.email ?? '',
+     createdAt: user.createdAt,
+     role: user.role,
+     referralCode: user.referralCode ?? null,
+     image: user.image ?? null,
+   };
 
   // --- Render using DashboardLayout ---
   return (
@@ -637,7 +411,7 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
       user={layoutUser}
       tabs={tabs}
       renderTabContent={renderTabContent}
-      actionButton={actionButton}
+      actionButton={actionButton || <></>}
     />
   );
 }
