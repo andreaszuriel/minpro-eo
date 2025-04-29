@@ -15,11 +15,12 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Define public paths that don't require authentication
   const isPublicPath = [
     "/",
     "/auth/signin",
     "/auth/verify-request",
-    "/auth/eo-login",
+    "/admin/login", 
   ].includes(pathname);
 
   const isApiPath = pathname.startsWith("/api");
@@ -30,11 +31,33 @@ export async function middleware(request: NextRequest) {
     "/images/",
   ].some((path) => pathname.startsWith(path));
 
+  // Special handling for admin dashboard routes
+  if (pathname.startsWith('/admin/dashboard')) {
+    console.log("MIDDLEWARE: Admin dashboard path detected");
+    
+    // Check if user is authenticated
+    if (!token) {
+      console.log("MIDDLEWARE: No token for admin route, redirecting to admin login");
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+    
+    // Check if user is an admin
+    if (!token.isAdmin) {
+      console.log("MIDDLEWARE: User is not an admin, access denied");
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    
+    console.log("MIDDLEWARE: Admin access granted");
+    return NextResponse.next();
+  }
+
+  // Standard handling for public/static resources
   if (isPublicPath || isApiPath || isStaticResourcePath) {
     console.log("MIDDLEWARE: Allowing access to public/static path:", pathname);
     return NextResponse.next();
   }
 
+  // Standard authentication check for protected routes
   if (!token) {
     console.log("MIDDLEWARE: No token, redirecting to signin");
     return NextResponse.redirect(new URL("/auth/signin", request.url));
@@ -44,8 +67,10 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+// Configure matcher to include both admin routes and protected routes
 export const config = {
   matcher: [
     "/((?!api|_next/static|_next/image|favicon.ico|auth/signin|auth/verify-request|^/$).*)",
+    "/admin/dashboard/:path*"
   ],
 };

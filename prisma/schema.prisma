@@ -18,6 +18,7 @@ model User {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   role              UserRole          @default(customer)
+  isAdmin           Boolean           @default(false)
   emailVerified     DateTime?
   image             String?
   referralCode      String?           @unique

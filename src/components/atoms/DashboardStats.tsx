@@ -1,4 +1,3 @@
-// components/dashboard/DashboardStats.tsx
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatCurrency } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts';
 
-// Import types from OrganizerDashboard or a shared types file
 import type { SalesData, StatusDistribution, EventPerformanceData } from '@/components/molecules/OrganizerDashboard'; // Adjust path if needed
 
 // --- Constants ---

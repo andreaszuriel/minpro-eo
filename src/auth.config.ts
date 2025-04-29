@@ -76,7 +76,13 @@ export const authConfig = {
 
                 console.log(`AUTHORIZE: Success for email: ${credentials.email}, User ID: ${user.id}`);
                 // Return the necessary user object fields for session/callbacks
-                return { id: user.id, email: user.email, name: user.name, role: user.role };
+                return {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                    isAdmin: user.isAdmin,
+                };
             },
         }),
     ],
@@ -98,6 +104,7 @@ export const authConfig = {
                 token.email = user.email;
                 token.name = user.name;
                 token.role = user.role;
+                token.isAdmin = user.isAdmin;
             }
             return token;
         },
@@ -108,6 +115,7 @@ export const authConfig = {
                 session.user.email = token.email as string;
                 session.user.name = token.name as string;
                 session.user.role = token.role as UserRole || 'customer';
+                session.user.isAdmin = token.isAdmin as boolean;
             } else if (user) {
                 // For backward compatibility with database strategy
                 session.user.id = user.id;
