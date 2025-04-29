@@ -1,4 +1,3 @@
-// src/controllers/transactions.controller.ts
 import { Request, Response } from 'express';
 import { TransactionService } from '../services/transactions.service';
 

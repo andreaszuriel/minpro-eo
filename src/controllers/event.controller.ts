@@ -9,9 +9,7 @@ export class EventController {
     this.eventService = new EventService();
   }
 
-  /**
-   * GET /api/event
-   */
+ 
   public async getEvents(req: Request, res: Response): Promise<void> {
     try {
       const filters = {

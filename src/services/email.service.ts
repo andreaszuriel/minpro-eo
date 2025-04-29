@@ -11,7 +11,32 @@ export class EmailService {
     },
   });
 
-  public async sendPasswordReset(email: string, token: string): Promise<void> {
+  /**
+   * Sends an email notifying the user that their transaction has expired.
+   */
+  public async sendTransactionExpired(
+    email: string,
+    txnId: number
+  ): Promise<void> {
+    await this.transporter.sendMail({
+      from: `"Your App" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: '⌛ Your payment window expired',
+      html: `
+        <p>Hello,</p>
+        <p>Your transaction <strong>#${txnId}</strong> expired because no payment proof was received within the allotted time.</p>
+        <p>Any points or coupons you used have been returned to your account, and seats have been released.</p>
+      `,
+    });
+  }
+
+  /**
+   * Sends a password reset link to the user.
+   */
+  public async sendPasswordReset(
+    email: string,
+    token: string
+  ): Promise<void> {
     const resetLink = `${process.env.CLIENT_RESET_URL}?token=${token}`;
 
     await this.transporter.sendMail({
@@ -27,6 +52,9 @@ export class EmailService {
     });
   }
 
+  /**
+   * Sends a confirmation email with the ticket download URL when a transaction is accepted.
+   */
   public async sendTransactionAccepted(
     email: string,
     txnId: number,
@@ -44,6 +72,9 @@ export class EmailService {
     });
   }
 
+  /**
+   * Notifies the user that their transaction was rejected and refunds any used points or coupons.
+   */
   public async sendTransactionRejected(
     email: string,
     txnId: number
