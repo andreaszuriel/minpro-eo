@@ -1,207 +1,191 @@
-// src/services/transactions.service.ts
-import { PrismaClient, TransactionStatus } from '@prisma/client';
-import { TransactionInput, TransactionPayload } from '../models/interface';
-import { generateVoucher } from '../utils/generateVouceher';
-import { generateTicket } from '../utils/generateTicket';
-import { EmailService } from './email.service';
+import { prisma } from "@/lib/prisma";
+import { Prisma, TransactionStatus, PrismaClient } from "@prisma/client";
+import { generateUniqueSerialCode } from "@/lib/utils";
 
-const prisma = new PrismaClient();
-const POINT_VALUE = 100; // 1 point = 100 IDR
+type TransactionClient = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
 export class TransactionService {
-  private emailService = new EmailService();
-
-  public async createTransaction(
-    data: TransactionInput,
-    userId: number
-  ): Promise<TransactionPayload> {
-    const event = await prisma.event.findUnique({ where: { id: data.eventId } });
-    if (!event) throw new Error('Event not found');
-
-    const tiers: { type: string; price: number; available: number }[] = event.tiers as any;
-    const tier = tiers.find(t => t.type === data.tierType);
-    if (!tier) throw new Error('Tier not found');
-    if (tier.available < data.ticketQuantity) throw new Error('Not enough seats in tier');
-
-    const basePrice = tier.price;
-    let couponDiscount = 0;
-    if (data.couponCode) {
-      const coupon = await prisma.coupon.findFirst({
-        where: { code: data.couponCode, userId, expiresAt: { gt: new Date() } }
-      });
-      if (coupon) couponDiscount = coupon.discount;
-    }
-
-    let pointsUsed = 0;
-    if (data.usePoints) {
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (user && user.points > 0) {
-        pointsUsed = Math.min(user.points, Math.floor((basePrice * data.ticketQuantity - couponDiscount) / POINT_VALUE));
-      }
-    }
-
-    const finalPrice = Math.max(0,
-      basePrice * data.ticketQuantity - couponDiscount - pointsUsed * POINT_VALUE
-    );
-
-    const txn = await prisma.$transaction(async (tx) => {
-      const updatedTiers = tiers.map(t =>
-        t.type === data.tierType
-          ? { ...t, available: t.available - data.ticketQuantity }
-          : t
-      );
-
-      await tx.event.update({
-        where: { id: event.id },
-        data: { tiers: updatedTiers }
-      });
-
-      if (pointsUsed > 0) {
-        await tx.user.update({
-          where: { id: userId },
-          data: { points: { decrement: pointsUsed } }
-        });
-      }
-
-      if (couponDiscount > 0) {
-        await tx.coupon.deleteMany({
-          where: { code: data.couponCode }
-        });
-      }
-
-      return tx.transaction.create({
-        data: {
-          userId,
-          eventId: event.id,
-          tierType: data.tierType,
-          ticketQuantity: data.ticketQuantity,
-          basePrice,
-          couponDiscount,
-          pointsUsed,
-          finalPrice,
-          status: TransactionStatus.PENDING,
-          paymentDeadline: new Date(Date.now() + 3 * 60 * 60 * 1000) // 3 hours
-        }
-      });
-    });
-
-    return txn as TransactionPayload;
-  }
-
-  public async uploadProof(id: number, proofUrl: string): Promise<TransactionPayload> {
-    const txn = await prisma.transaction.update({
+  static async resendTickets(id: number) {
+    const tx = await prisma.transaction.findUnique({
       where: { id },
-      data: {
-        paymentProof: proofUrl,
-        status: TransactionStatus.WAITING_ADMIN
-      }
+      include: { tickets: true, user: true, event: true },
     });
-    return txn as TransactionPayload;
+  
+    if (!tx) {
+      throw new Error('Transaction not found');
+    }
+  
+    // TODO: hook to real email-sending logic here.
+    // e.g. await EmailService.sendTickets(tx.user.email, tx.tickets);
+  
+    // For mocks just console log
+    console.log(`Resending ${tx.tickets.length} tickets for transaction #${id}`);
+  
+    return;
   }
-
-  public async updateStatusToPaid(id: number): Promise<TransactionPayload> {
-    const txn = await prisma.transaction.findUnique({ where: { id } });
-    if (!txn) throw new Error('Transaction not found');
-    if (txn.status !== TransactionStatus.WAITING_ADMIN) throw new Error('Bad status');
-
-    const [user, event] = await Promise.all([
-      prisma.user.findUnique({ where: { id: txn.userId } }),
-      prisma.event.findUnique({ where: { id: txn.eventId } })
-    ]);
-    if (!user || !event) throw new Error('Data missing');
-
-    const voucherUrl = await generateVoucher({
-      userName: user.name,
-      eventTitle: event.title,
-      tierType: txn.tierType,
-      quantity: txn.ticketQuantity,
-      total: txn.finalPrice,
-      date: txn.createdAt
-    });
-
-    const ticketUrl = await generateTicket({
-      userName: user.name,
-      eventTitle: event.title,
-      tierType: txn.tierType,
-      quantity: txn.ticketQuantity,
-      eventDate: event.startDate
-    });
-
-    const updated = await prisma.transaction.update({
+    // Get a transaction by ID with related data
+  static async getTransactionById(id: number) {
+    return prisma.transaction.findUnique({
       where: { id },
-      data: {
-        status: TransactionStatus.PAID,
-        voucherUrl,
-        ticketUrl
-      }
+      include: {
+        event: true,
+        user: true,
+        tickets: true,
+      },
     });
-
-    // Send email notification
-    if (user.email && updated.ticketUrl) {
-      await this.emailService.sendTransactionAccepted(
-        user.email,
-        updated.id,
-        updated.ticketUrl
-      );
-    }
-
-    return updated as TransactionPayload;
   }
-
-  public async rejectTransaction(id: number): Promise<TransactionPayload> {
-    const txn = await prisma.transaction.findUnique({ where: { id } });
-    if (!txn) throw new Error('Transaction not found');
-    if (txn.status !== TransactionStatus.WAITING_ADMIN) {
-      throw new Error('Cannot reject transaction in its current status');
-    }
-
-    const result = await prisma.$transaction(async tx => {
-      const ev = await tx.event.findUnique({ where: { id: txn.eventId } });
-      if (ev) {
-        const tiers = ev.tiers as { type: string; price: number; available: number }[];
-        const updatedTiers = tiers.map(t =>
-          t.type === txn.tierType
-            ? { ...t, available: t.available + txn.ticketQuantity }
-            : t
-        );
-        await tx.event.update({ where: { id: ev.id }, data: { tiers: updatedTiers } });
+   
+  // Get transactions by organizer ID
+ static async getOrganizerTransactions(organizerId: string) {
+    return prisma.transaction.findMany({
+      where: {
+        event: {
+          organizerId,
+        },
+      },
+      include: {
+        event: true,
+        user: true,
+        tickets: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
+   // Create a new transaction
+ static async createTransaction(data: Prisma.TransactionCreateInput) {
+    return prisma.$transaction(async (tx) => {  
+      // Verify event exists and has enough seats
+      const event = await tx.event.findUnique({
+        where: { id: data.event.connect?.id as number },
+      });
+      
+      if (!event) {
+        throw new Error("Event not found");
       }
-
-      if (txn.pointsUsed > 0) {
-        await tx.user.update({
-          where: { id: txn.userId },
-          data: { points: { increment: txn.pointsUsed } }
-        });
+      
+      // Check if tickets are available
+      const soldTickets = await tx.ticket.count({
+        where: { eventId: event.id }
+      });
+      
+      if (soldTickets + (data.ticketQuantity as number) > event.seats) {
+        throw new Error("Not enough tickets available");
       }
-
-      if (txn.couponDiscount > 0) {
-        await tx.coupon.create({
-          data: {
-            code: `REFUND-${Date.now()}`,
-            userId: txn.userId,
-            discount: txn.couponDiscount,
-            expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
-          }
-        });
+      
+      // Create the transaction
+      const transaction = await tx.transaction.create({
+        data,
+        include: {
+          event: true,
+          user: true,
+        },
+      });
+      
+      // If transaction is already PAID, create tickets immediately
+      if (transaction.status === "PAID") {
+        await this.createTicketsForTransaction(transaction.id, tx);
       }
-
-      return tx.transaction.update({
+      
+      // Get the complete transaction with tickets
+      const result = await tx.transaction.findUnique({
+        where: { id: transaction.id },
+        include: {
+          event: true,
+          user: true,
+          tickets: true,
+        },
+      });
+      
+      return result;
+    });
+  }
+ // Update a transaction status and handle related logic 
+  static async updateTransactionStatus(
+    id: number, 
+    status: TransactionStatus, 
+    updateData: Partial<Prisma.TransactionUpdateInput> = {}
+  ) {
+    return prisma.$transaction(async (tx) => {
+      // Get current transaction
+      const currentTransaction = await tx.transaction.findUnique({
         where: { id },
-        data: { status: TransactionStatus.REJECTED }
       });
+      
+      if (!currentTransaction) {
+        throw new Error("Transaction not found");
+      }
+      
+      // Check if payment deadline has passed
+      if (status === "PAID" && 
+          currentTransaction.paymentDeadline < new Date() && 
+          currentTransaction.status !== "PAID") {
+        throw new Error("Payment deadline has passed");
+      }
+      
+      // Update transaction
+      const transaction = await tx.transaction.update({
+        where: { id },
+        data: {
+          ...updateData,
+          status,
+        },
+      });
+      
+      // Handle status-specific logic
+      if (status === "PAID" && currentTransaction.status !== "PAID") {
+        await this.createTicketsForTransaction(id, tx);
+      }
+      
+      // Get the complete updated transaction with tickets
+      const result = await tx.transaction.findUnique({
+        where: { id: transaction.id },
+        include: {
+          event: true,
+          user: true,
+          tickets: true,
+        },
+      });
+      
+      return result;
     });
-
-    const user = await prisma.user.findUnique({ where: { id: result.userId } });
-    if (user?.email) {
-      await this.emailService.sendTransactionRejected(user.email, result.id);
-    }
-
-    return result as TransactionPayload;
   }
-
-  public async getById(id: number): Promise<TransactionPayload> {
-    const t = await prisma.transaction.findUnique({ where: { id } });
-    if (!t) throw new Error('Transaction not found');
-    return t as TransactionPayload;
+ 
+  // Create tickets for a transaction
+ private static async createTicketsForTransaction(
+    transactionId: number, 
+    txClient: TransactionClient
+  ) {
+    // Check if tickets already exist
+    const existingTickets = await txClient.ticket.count({
+      where: { transactionId }
+    });
+    
+    if (existingTickets > 0) {
+      return; // Tickets already created
+    }
+    
+    const transaction = await txClient.transaction.findUnique({
+      where: { id: transactionId },
+    });
+    
+    if (!transaction) {
+      throw new Error("Transaction not found");
+    }
+    
+    // Create tickets
+    const ticketsToCreate = Array.from({ length: transaction.ticketQuantity }).map(() => ({
+      serialCode: generateUniqueSerialCode(),
+      userId: transaction.userId,
+      eventId: transaction.eventId,
+      transactionId: transaction.id,
+      tierType: transaction.tierType,
+      isUsed: false,
+    }));
+    
+    await txClient.ticket.createMany({
+      data: ticketsToCreate
+    });
   }
 }

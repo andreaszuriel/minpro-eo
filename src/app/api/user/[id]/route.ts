@@ -2,25 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
+    // await the params promise!
+    const { id } = await context.params;
+
     // Check if user is authenticated
     const session = await auth();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch the specific user by ID from the database via Prisma
+    // Fetch the specific user by ID
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         name: true,
         email: true,
         createdAt: true,
         referralCode: true,
-        role: true, 
-        image: true, 
+        role: true,
+        image: true,
       },
     });
 

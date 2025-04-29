@@ -175,8 +175,7 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                   ? "You haven't created any events yet."
                   : "Try adjusting your search or filters."}
               </p>
-              {/* Make sure `user.id` is available in this scope or passed as a prop if needed */}
-              {/* Example: Assuming organizerId is available */}
+            
               {initialEvents.length === 0 && (
                  <Button
                     className="bg-secondary-600 hover:bg-secondary-700"
