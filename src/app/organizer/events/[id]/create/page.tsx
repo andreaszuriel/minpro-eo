@@ -278,32 +278,38 @@ const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      setDataLoading(true); // Set loading to true when starting fetch
+      setDataLoading(true);
       try {
         // Fetch genres
         const genresResponse = await fetch('/api/genres');
         if (genresResponse.ok) {
           const genresData = await genresResponse.json();
-          setGenres(genresData.genres);
+          setGenres(genresData); 
         } else {
            console.error("Failed to fetch genres");
            toast.error("Failed to load genres");
+           setGenres([]);
         }
 
         // Fetch countries
         const countriesResponse = await fetch('/api/countries');
         if (countriesResponse.ok) {
           const countriesData = await countriesResponse.json();
-          setCountries(countriesData.countries);
+         
+          setCountries(countriesData);
+        
         } else {
            console.error("Failed to fetch countries");
            toast.error("Failed to load countries");
+           setCountries([]); // Set to empty array on failure
         }
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load required data");
+        setGenres([]);
+        setCountries([]);
       } finally {
-        setDataLoading(false); // Set loading to false when fetch finishes (success or fail)
+        setDataLoading(false);
       }
     };
 
