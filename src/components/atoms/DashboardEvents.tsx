@@ -2,7 +2,8 @@ import { useState } from "react";
 import { format } from "date-fns";
 import {
   Calendar, Clock, MapPin, ChevronUp, ChevronDown,
-  Search, Plus, Edit, Trash, AlertCircle
+  Search, Plus, Edit, Trash, AlertCircle,
+  Eye 
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -32,8 +33,8 @@ import type { Event as PrismaEvent, Genre, Country } from '@prisma/client'
 
 // --- Define ExtendedEvent Type  ---
 type ExtendedEvent = Omit<PrismaEvent, 'genreId' | 'countryId'> & {
-  genre: Genre; 
-  country: Country; 
+  genre: Genre;
+  country: Country;
   soldSeats: number;
   totalRevenue: number;
   averageRating: number | null;
@@ -49,6 +50,12 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+
+  //  Function to handle view
+  const handleView = (eventId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation(); // Prevent toggling expand/collapse when clicking hover button
+    router.push(`/events/${eventId}`);
+  };
 
   // Function to handle edit
   const handleEdit = (eventId: number, e?: React.MouseEvent) => {
@@ -69,7 +76,7 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/events/${eventToDelete}`, { 
+      const response = await fetch(`/api/events/${eventToDelete}`, {
         method: 'DELETE',
       });
 
@@ -78,15 +85,10 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
         throw new Error(errorData.error || 'Failed to delete event');
       }
 
-      // Remove event from local state
       setEvents(prevEvents => prevEvents.filter(event => event.id !== eventToDelete));
       toast.success("Event deleted successfully");
-
-      // Close dialog and reset state
       setIsDeleting(false);
       setEventToDelete(null);
-
-      // If the deleted event was expanded, collapse it
       if (expandedEventId === eventToDelete) {
         setExpandedEventId(null);
       }
@@ -117,12 +119,12 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
       return true;
     })
     .filter(event => {
-        const lowerSearchTerm = searchTerm.toLowerCase();      
-        const genreName = event.genre?.name?.toLowerCase() ?? ''; 
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        const genreName = event.genre?.name?.toLowerCase() ?? '';
         return (
             event.title.toLowerCase().includes(lowerSearchTerm) ||
             event.location.toLowerCase().includes(lowerSearchTerm) ||
-            genreName.includes(lowerSearchTerm) 
+            genreName.includes(lowerSearchTerm)
         );
     });
 
@@ -168,18 +170,18 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
              <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center">
               <Calendar className="mb-2 h-10 w-10 text-gray-400" />
               <h3 className="mb-1 text-lg font-medium">
-                {initialEvents.length === 0 ? "No Events Found" : "No Matching Events"} {/* Check initialEvents here */}
+                {initialEvents.length === 0 ? "No Events Found" : "No Matching Events"}
               </h3>
               <p className="mb-4 text-gray-500">
                 {initialEvents.length === 0
                   ? "You haven't created any events yet."
                   : "Try adjusting your search or filters."}
               </p>
-            
+
               {initialEvents.length === 0 && (
                  <Button
                     className="bg-secondary-600 hover:bg-secondary-700"
-                    onClick={() => router.push(`/organizer/events/create`)} 
+                    onClick={() => router.push(`/organizer/events/create`)}
                  >
                    <Plus className="mr-2 h-4 w-4" />Create Your First Event
                  </Button>
@@ -216,24 +218,35 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                     {/* Right side: Actions, Stats, Chevron */}
                     <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                       {/* Action buttons that appear on hover */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+                      <div className="cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+                        {/* --- View Button (Hover) --- */}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className="cursor-pointer h-8 w-8 p-0"
+                          onClick={(e) => handleView(event.id, e)} // Pass 'e' to stop propagation
+                          aria-label={`View ${event.title}`}
+                        >
+                          <Eye className="cursor-pointer h-4 w-4 text-blue-600" />
+                        </Button>
+              
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="cursor-pointer h-8 w-8 p-0"
                           onClick={(e) => handleEdit(event.id, e)}
                           aria-label={`Edit ${event.title}`}
                         >
-                          <Edit className="h-4 w-4 text-primary-600" />
+                          <Edit className="cursor-pointer h-4 w-4 text-primary-600" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className="cursor-pointer h-8 w-8 p-0"
                           onClick={(e) => openDeleteDialog(event.id, e)}
                            aria-label={`Delete ${event.title}`}
                         >
-                          <Trash className="h-4 w-4 text-red-600" />
+                          <Trash className="cursor-pointer h-4 w-4 text-red-600" />
                         </Button>
                       </div>
 
@@ -264,8 +277,7 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                         <div className="space-y-2">
                           <h4 className="font-medium text-primary-700">Event Details</h4>
                           <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-sm">
-                            {/* Display genre name using optional chaining and fallback */}
-                            <span className="text-gray-500">Genre:</span><span className="font-medium text-black break-words">{event.genre?.name ?? 'N/A'}</span> {/* <-- MODIFIED */}
+                            <span className="text-gray-500">Genre:</span><span className="font-medium text-black break-words">{event.genre?.name ?? 'N/A'}</span>
                             <span className="text-gray-500">Start Date:</span><span className="font-medium text-black">{format(new Date(event.startDate), 'PPp')}</span>
                             <span className="text-gray-500">End Date:</span><span className="font-medium text-black">{format(new Date(event.endDate), 'PPp')}</span>
                             <span className="text-gray-500">Location:</span><span className="font-medium text-black break-words">{event.location}</span>
@@ -292,9 +304,19 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                         <div className="space-y-2">
                           <h4 className="font-medium text-primary-700">Actions</h4>
                           <div className="flex flex-col space-y-2">
+                            {/* --- View Button (Expanded) --- */}
+                             <Button
+                              variant="outline"
+                              className="cursor-pointer w-full bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 justify-start" // Blue theme
+                              onClick={() => handleView(event.id)} 
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Event
+                            </Button>
+                          
                             <Button
                               variant="outline"
-                              className="w-full bg-primary-50 border-primary-300 text-primary-700 hover:bg-primary-100 justify-start" // justify-start
+                              className="cursor-pointer w-full bg-primary-50 border-primary-300 text-primary-700 hover:bg-primary-100 justify-start"
                               onClick={() => handleEdit(event.id)}
                             >
                               <Edit className="mr-2 h-4 w-4" />
@@ -302,7 +324,7 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                             </Button>
                             <Button
                               variant="outline"
-                              className="w-full bg-red-50 border-red-300 text-red-700 hover:bg-red-100 justify-start"
+                              className="cursor-pointer w-full bg-red-50 border-red-300 text-red-700 hover:bg-red-100 justify-start"
                               onClick={() => openDeleteDialog(event.id)}
                             >
                               <Trash className="mr-2 h-4 w-4" />

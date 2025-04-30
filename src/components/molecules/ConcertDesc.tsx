@@ -1,21 +1,37 @@
 import React from 'react';
 import Link from 'next/link';
 import { Calendar, MapPin, User, ExternalLink } from 'lucide-react';
-import { ConcertEvent } from '@/components/data/concertlist';
 
 interface ConcertDescriptionProps {
-  concert: ConcertEvent;
-  genres: string[];
+  concert: {
+      id: number; 
+      title: string;
+      artist: string;
+      startDate: string;
+      time: string; 
+      location: string;
+      description: string | null;
+      organizer: string; 
+      organizerId?: string; 
+      // genre: string; 
+  };
+  genres: string[]; // Keep this as is
   getFormattedDate: () => string;
 }
 
 export default function ConcertDescription({ concert, genres, getFormattedDate }: ConcertDescriptionProps) {
+  // Generate organizer link slug (handle potential null name passed)
+  const organizerSlug = concert.organizer
+    ? concert.organizer.toLowerCase().replace(/\s+/g, '-')
+    : 'unknown-organizer';
+
   return (
     <div className="w-full md:w-2/3 mb-8 md:mb-0 order-2 md:order-1">
       {/* Concert Details */}
       <h1 className="text-primary-700 text-3xl md:text-4xl font-bold mb-2">{concert.title}</h1>
       <h2 className="text-xl md:text-2xl font-semibold text-primary-600 mb-4">{concert.artist}</h2>
 
+      {/* Use the genres array prop */}
       <div className="flex flex-wrap gap-2 mb-4">
         {genres.map((genre, index) => (
           <div
@@ -30,6 +46,7 @@ export default function ConcertDescription({ concert, genres, getFormattedDate }
         <div className="text-black flex items-center">
           <Calendar className="h-5 w-5 mr-3 text-primary-600" />
           <span>
+            {/* Use getFormattedDate and concert.time */}
             {getFormattedDate()} | {concert.time}
           </span>
         </div>
@@ -44,7 +61,8 @@ export default function ConcertDescription({ concert, genres, getFormattedDate }
 
       {/* Description */}
       <div className="mb-6">
-        <p className="text-gray-700 leading-relaxed">{concert.description}</p>
+        {/* Use concert.description safely */}
+        <p className="text-gray-700 leading-relaxed">{concert.description ?? 'No description available.'}</p>
       </div>
 
       <div className="border-t border-gray-300 my-6"></div>
@@ -56,9 +74,11 @@ export default function ConcertDescription({ concert, genres, getFormattedDate }
           <User className="text-white" />
         </div>
         <div>
+          {/* Use the simplified organizer name */}
           <p className="font-bold text-black">{concert.organizer}</p>
+          {/* Use the generated slug */}
           <Link
-            href={`/organizers/${concert.organizer.toLowerCase().replace(/\s+/g, '-')}`}
+            href={`/organizers/${organizerSlug}`} // Use the generated slug
             className="text-primary-600 hover:text-secondary-600 flex items-center"
           >
             View Profile <ExternalLink className="ml-1 h-3 w-3" />
