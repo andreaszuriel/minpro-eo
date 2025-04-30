@@ -127,8 +127,6 @@ export default function ConcertListSection() {
             <p className="text-lg text-primary-600">
               Showing results for
               {searchQuery && <span className="font-medium"> "{searchQuery}"</span>}
-              {/* Assuming selectedCountry is CODE, you might want to display NAME here */}
-              {/* You might need another state/fetch to map countryCode to countryName if needed */}
               {selectedCountry && <span className="font-medium"> in {selectedCountry}</span>}
               {selectedGenre && <span className="font-medium"> | Genre: {selectedGenre}</span>}
             </p>
@@ -257,7 +255,7 @@ function ConcertCard({ concert }: { concert: FetchedEventListItem }) {
 
   return (
     <Link
-      href={`/concerts/${concert.id}`} // Link using the event ID
+      href={`/events/${concert.id}`} // Link using the event ID
       className="h-full"
       aria-label={`View details for ${concert.title}`}
     >

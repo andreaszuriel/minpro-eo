@@ -529,18 +529,3 @@ export interface ConcertEvent {
         organizer: "Random Minds Inc."
     }
   ];
-  
-  // Helper function to format prices for display
-  export function formatPrice(price: number, currency: string = "IDR"): string {
-    return `${currency} ${price.toLocaleString()}`;
-  }
- 
-  // Helper function to separate genres
-  export function getGenres(genreString: string): string[] {
-    return genreString.split('/').map(genre => genre.trim());
-  }
-
-  // Example of how to use the formatting function
-  // const vipPrice = concertList[0].price.VIP;
-  // const formattedPrice = formatPrice(vipPrice, concertList[0].currency);
-  // Will display "IDR 1,500,000"
