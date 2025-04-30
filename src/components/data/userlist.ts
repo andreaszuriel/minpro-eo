@@ -8,6 +8,7 @@ export interface UserItem {
   role: UserRole;
   points: number;
   referralCode: string;
+  isAdmin: boolean;
   image?: string;
   emailVerified?: Date; // Optional: Mark as verified for seeding
 }
@@ -22,8 +23,9 @@ export const userList: UserItem[] = [
     role: 'organizer',
     points: 0,
     referralCode: 'ORG1CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=organizer1',
+    image: 'https://i.pinimg.com/736x/b7/2d/d1/b72dd14f9dd742dbb03c72e2a3c13f3e.jpg',
     emailVerified: new Date(),
+    isAdmin: false
   },
   {
     id: 'org2',
@@ -33,8 +35,9 @@ export const userList: UserItem[] = [
     role: 'organizer',
     points: 0,
     referralCode: 'ORG2CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=organizer2',
+    image: 'https://i.pinimg.com/736x/b7/2d/d1/b72dd14f9dd742dbb03c72e2a3c13f3e.jpg',
     emailVerified: new Date(),
+    isAdmin: false
   },
   {
     id: 'org3',
@@ -44,8 +47,9 @@ export const userList: UserItem[] = [
     role: 'organizer',
     points: 0,
     referralCode: 'ORG3CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=organizer3',
+    image: 'https://i.pinimg.com/736x/b7/2d/d1/b72dd14f9dd742dbb03c72e2a3c13f3e.jpg',
     emailVerified: new Date(),
+    isAdmin: false
   },
   {
     id: 'org4',
@@ -55,8 +59,9 @@ export const userList: UserItem[] = [
     role: 'organizer',
     points: 0,
     referralCode: 'ORG4CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=organizer4',
+    image: 'https://i.pinimg.com/736x/b7/2d/d1/b72dd14f9dd742dbb03c72e2a3c13f3e.jpg',
     emailVerified: new Date(),
+    isAdmin: false
   },
   {
     id: 'org5',
@@ -66,8 +71,9 @@ export const userList: UserItem[] = [
     role: 'organizer',
     points: 0,
     referralCode: 'ORG5CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=organizer5',
+    image: 'https://i.pinimg.com/736x/b7/2d/d1/b72dd14f9dd742dbb03c72e2a3c13f3e.jpg',
     emailVerified: new Date(),
+    isAdmin: false
   },
   {
     id: 'org6',
@@ -77,8 +83,9 @@ export const userList: UserItem[] = [
     role: 'organizer',
     points: 0,
     referralCode: 'ORG6CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=organizer6',
+    image: 'https://i.pinimg.com/736x/b7/2d/d1/b72dd14f9dd742dbb03c72e2a3c13f3e.jpg',
     emailVerified: new Date(),
+    isAdmin: false
   },
 
   // Customers (cust1 - cust4)
@@ -88,21 +95,23 @@ export const userList: UserItem[] = [
     email: 'customer1@example.com',
     password: 'securepassword', // HASH THIS!
     role: 'customer',
-    points: 150, // Initial points
+    points: 150,
     referralCode: 'CUST1CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=customer1',
+    image: 'https://i.pinimg.com/1200x/b3/4b/6d/b34b6d100330dae14061e943387c49ba.jpg',
     emailVerified: new Date(),
+    isAdmin: false
   },
   {
     id: 'cust2',
     name: 'Customer User Two',
     email: 'customer2@example.com',
-    password: 'securepassword', // 'securepassword'
+    password: 'securepassword',
     role: 'customer',
-    points: 75, // Initial points
+    points: 75,
     referralCode: 'CUST2CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=customer2',
+    image: 'https://i.pinimg.com/1200x/b3/4b/6d/b34b6d100330dae14061e943387c49ba.jpg',
     emailVerified: new Date(),
+    isAdmin: false
   },
   {
     id: 'cust3',
@@ -110,20 +119,35 @@ export const userList: UserItem[] = [
     email: 'customer3@example.com',
     password: 'securepassword', // HASH THIS!
     role: 'customer',
-    points: 200, // Initial points
+    points: 200,
     referralCode: 'CUST3CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=customer3',
+    image: 'https://i.pinimg.com/1200x/b3/4b/6d/b34b6d100330dae14061e943387c49ba.jpg',
     emailVerified: new Date(),
+    isAdmin: false
   },
   {
     id: 'cust4',
     name: 'Customer User Four',
     email: 'customer4@example.com',
-    password: 'securepassword', // HASH THIS!
+    password: 'securepassword',
     role: 'customer',
-    points: 25, // Initial points
+    points: 25,
     referralCode: 'CUST4CODE',
-    image: 'https://api.dicebear.com/7.x/personas/svg?seed=customer4',
+    image: 'https://i.pinimg.com/1200x/b3/4b/6d/b34b6d100330dae14061e943387c49ba.jpg',
+    emailVerified: new Date(),
+    isAdmin: false
+  },
+
+  {
+    id: 'admin',
+    name: 'Test Admin',
+    email: 'testadmin@example.com',
+    password: 'securepassword', 
+    role: 'organizer',
+    points: 0, 
+    referralCode: 'admin123',
+    isAdmin: true,
+    image: 'https://i.pinimg.com/1200x/6e/59/95/6e599501252c23bcf02658617b29c894.jpg',
     emailVerified: new Date(),
   }
 ];
