@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
     const newGenre = await prisma.genre.create({
       data: {
         name: trimmedName, // Store the trimmed name
-      },
-      select: { // Return the created object
+      }, 
+      select: { 
         id: true,
         name: true,
       }
