@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import {
   Calendar, Clock, MapPin, ChevronUp, ChevronDown,
   Search, Plus, Edit, Trash, AlertCircle,
-  Eye 
+  Eye, Star, StarHalf 
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -205,7 +205,30 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                             }
                         </div>
                         <div className="min-w-0">
-                            <h3 className="font-medium truncate">{event.title}</h3>
+                            <h3 className="text-primary-700 font-medium truncate">{event.title}</h3>
+                            <div className="flex items-center my-1">
+                                {event.averageRating ? (
+                                    <>
+                                        <div className="flex items-center text-yellow-500">
+                                            {[...Array(5)].map((_, i) => {
+                                                const rating = event.averageRating || 0;
+                                                if (i < Math.floor(rating)) {
+                                                    return <Star key={i} className="h-3.5 w-3.5 fill-current" />;
+                                                } else if (i === Math.floor(rating) && rating % 1 >= 0.5) {
+                                                    return <StarHalf key={i} className="h-3.5 w-3.5 fill-current" />;
+                                                } else {
+                                                    return <Star key={i} className="h-3.5 w-3.5 text-gray-300" />;
+                                                }
+                                            })}
+                                        </div>
+                                        <span className="ml-1.5 text-xs font-medium text-gray-700">
+                                            {event.averageRating.toFixed(1)}
+                                        </span>
+                                    </>
+                                ) : (
+                                    <span className="text-xs text-gray-500">No ratings yet</span>
+                                )}
+                            </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
                             <div className="flex items-center"><Calendar className="mr-1 h-3 w-3" />{format(new Date(event.startDate), 'MMM d, yyyy')}</div>
                             <div className="flex items-center"><Clock className="mr-1 h-3 w-3" />{format(new Date(event.startDate), 'h:mm a')}</div>

@@ -5,11 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 export default function AdminLogin() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,21 +22,36 @@ export default function AdminLogin() {
       const response = await signIn("credentials", {
         email: formData.get("email") as string,
         password: formData.get("password") as string,
-        redirect: false,
+        redirect: false, 
       });
 
+      setIsLoading(false); 
+
       if (response?.error) {
-        setError(response.error);
-        setIsLoading(false);
+        // Map common errors to user-friendly messages
+        if (response.error === "CredentialsSignin") {
+             setError("Invalid email or password. Please try again.");
+        } else if (response.error === "AccessDenied") { 
+             setError("Access Denied. You might not have admin privileges.");
+        }
+         else {
+             setError("Login failed. Please check your credentials.");
+        }
+        console.error("SignIn Error:", response.error); 
+      } else if (response?.ok && !response.error) {
+         // Login was successful
+        setRedirecting(true); // Show feedback to the user
+        window.location.href = '/admin/dashboard';
+
       } else {
-        setRedirecting(true);
-        // Redirect to admin dashboard instead of user-specific dashboard
-        router.push("/admin/dashboard");
+          setError("An unexpected issue occurred during login. Please try again.");
+          console.warn("Unexpected SignIn Response:", response);
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("Catch Block Error:", err);
       setError("An unexpected error occurred. Please try again.");
-      setIsLoading(false);
+      setIsLoading(false); // Ensure loading is stopped on catch
+      setRedirecting(false); // Ensure redirecting is reset
     }
   };
   

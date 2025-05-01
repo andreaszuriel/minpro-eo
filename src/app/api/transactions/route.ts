@@ -80,6 +80,9 @@ export async function POST(req: NextRequest) {
       event: { connect: { id: data.eventId } },
     };
     
+    // Ensure not passing an ID explicitly
+    delete data.id;
+    
     // Optional fields
     if (data.paymentProof) transactionData.paymentProof = data.paymentProof;
     if (data.ticketUrl) transactionData.ticketUrl = data.ticketUrl;
@@ -87,6 +90,6 @@ export async function POST(req: NextRequest) {
     
     const transaction = await TransactionService.createTransaction(transactionData);
 
-    return new Response(JSON.stringify({ transaction }), { status: 201 });
+    return new Response(JSON.stringify(transaction), { status: 201 }); 
   });
 }

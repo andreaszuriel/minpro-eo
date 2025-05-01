@@ -5,15 +5,19 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import type { AdapterAccount } from "@auth/core/adapters";
 
-// Get the original adapter
-const prismaAdapter = PrismaAdapter(prisma);
+// Create enhanced adapter with logging
+const createEnhancedAdapter = () => {
+  // Get the original adapter
+  const prismaAdapter = PrismaAdapter(prisma);
 
-// Add debug logging using a logger function
-const logAdapter = () => {
-  // Add logging for createSession
+  // Add debug logging to key methods
   const originalCreateSession = prismaAdapter.createSession!;
   prismaAdapter.createSession = async (session) => {
-    console.log("ADAPTER: Creating session", session);
+    console.log("ADAPTER: Creating session", {
+      userId: session.userId,
+      expires: session.expires,
+    });
+    
     try {
       const result = await originalCreateSession(session);
       console.log("ADAPTER: Session created successfully", {
@@ -28,16 +32,21 @@ const logAdapter = () => {
     }
   };
 
-  // Add logging for getSessionAndUser
+  // Add logging for getSessionAndUser with better security
   const originalGetSessionAndUser = prismaAdapter.getSessionAndUser!;
   prismaAdapter.getSessionAndUser = async (sessionToken) => {
-    console.log("ADAPTER: Getting session and user", sessionToken.substring(0, 5) + "...");
+    console.log("ADAPTER: Getting session and user", {
+      tokenPreview: sessionToken.substring(0, 5) + "...",
+    });
+    
     try {
       const result = await originalGetSessionAndUser(sessionToken);
       console.log("ADAPTER: Get session and user result", result ? {
         userId: result.user.id,
-        email: result.user.email,
+        email: result.user.email?.substring(0, 3) + "...",
+        hasSession: !!result.session,
       } : "Not found");
+      
       return result;
     } catch (error) {
       console.error("ADAPTER: Failed to get session and user", error);
@@ -45,17 +54,22 @@ const logAdapter = () => {
     }
   };
 
-  // Add logging for createUser
+  // Add logging for createUser with better security
   const originalCreateUser = prismaAdapter.createUser!;
   prismaAdapter.createUser = async (user) => {
-    console.log("ADAPTER: Attempting createUser", user);
+    console.log("ADAPTER: Attempting createUser", {
+      email: user.email?.substring(0, 3) + "...",
+      hasName: !!user.name,
+    });
+    
     try {
       const created = await originalCreateUser(user);
       console.log("ADAPTER: createUser SUCCESS", {
         id: created.id,
-        email: created.email,
-        name: created.name,
+        email: created.email?.substring(0, 3) + "...",
+        hasName: !!created.name,
       });
+      
       return created;
     } catch (error) {
       console.error("ADAPTER: Failed to create user", error);
@@ -63,34 +77,73 @@ const logAdapter = () => {
     }
   };
 
-  // Add logging for linkAccount
+  // Add logging for linkAccount with better security
   const originalLinkAccount = prismaAdapter.linkAccount!;
   prismaAdapter.linkAccount = async (account: AdapterAccount) => {
     console.log("ADAPTER: Attempting linkAccount", {
       provider: account.provider,
-      providerAccountId: account.providerAccountId,
       userId: account.userId,
     });
+    
     try {
-      await originalLinkAccount(account); // Explicitly await, return void
-      console.log("ADAPTER: linkAccount SUCCESS", { provider: account.provider, userId: account.userId });
+      await originalLinkAccount(account);
+      console.log("ADAPTER: linkAccount SUCCESS", { 
+        provider: account.provider, 
+        userId: account.userId 
+      });
     } catch (error) {
       console.error("ADAPTER: Failed to link account", error);
       throw error;
     }
   };
 
+  // Add defensive error handling to other adapter methods
+  const wrapMethod = <T extends Function>(methodName: string, method?: T): T | undefined => {
+    if (!method) return undefined;
+    
+    return (async (...args: any[]) => {
+      try {
+        return await method(...args);
+      } catch (error) {
+        console.error(`ADAPTER: Error in ${methodName}`, error);
+        throw error;
+      }
+    }) as unknown as T;
+  };
+
+  // Wrap remaining methods with error handling
+  prismaAdapter.getUser = wrapMethod('getUser', prismaAdapter.getUser);
+  prismaAdapter.getUserByEmail = wrapMethod('getUserByEmail', prismaAdapter.getUserByEmail);
+  prismaAdapter.getUserByAccount = wrapMethod('getUserByAccount', prismaAdapter.getUserByAccount);
+  prismaAdapter.updateUser = wrapMethod('updateUser', prismaAdapter.updateUser);
+  prismaAdapter.updateSession = wrapMethod('updateSession', prismaAdapter.updateSession);
+  prismaAdapter.deleteSession = wrapMethod('deleteSession', prismaAdapter.deleteSession);
+
   return prismaAdapter;
 };
 
-// Apply logging to the adapter
-const adapter = logAdapter();
+// Create enhanced adapter
+const enhancedAdapter = createEnhancedAdapter();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter, // Keep the adapter for database operations
-  debug: true,
+  adapter: enhancedAdapter,
+  debug: process.env.NODE_ENV !== "production",
   session: {
-    strategy: "jwt", // Ensure this matches
-  }
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" 
+        ? `__Secure-next-auth.session-token` 
+        : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
 });

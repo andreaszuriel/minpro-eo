@@ -67,7 +67,7 @@ function processEvents(fetchedEvents: FetchedEvent[], transactions: ExtendedTran
         const eventTransactions = transactions.filter(t => t.eventId === event.id && t.status === 'PAID');
         const soldSeats = eventTransactions.reduce((sum, t) => sum + t.ticketQuantity, 0);
         const totalRevenue = eventTransactions.reduce((sum, t) => sum + t.finalPrice, 0);
-        const averageRating = (event as any).reviews?._avg?.rating ?? null;
+        const averageRating = event.averageRating ?? null;
         return { ...event, soldSeats, totalRevenue, averageRating };
     });
 }

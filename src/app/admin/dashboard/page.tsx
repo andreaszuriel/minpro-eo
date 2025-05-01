@@ -16,37 +16,45 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
 
+  // --- Calculate isAdmin reliably ---
+  // Only calculate isAdmin *after* loading is done and we have a session if authenticated
+  const isAdmin = status === "authenticated" && session?.user?.isAdmin === true;
+  const userRole = session?.user?.role;
+  const userEmail = session?.user?.email;
+
+  // --- Handle Redirection for Non-Admins ---
+  useEffect(() => {
+    // Only run redirection logic once the status is definitive (not loading)
+    if (status !== "loading") {
+        // If authenticated but definitively not an admin
+        if (status === "authenticated" && !isAdmin) {
+            setIsRedirecting(true);
+            const timer = setTimeout(() => {
+                router.push("/");
+            }, 3000); // Keep the delay or remove if preferred
+            return () => clearTimeout(timer);
+        }
+        // Reset redirecting state if status changes (e.g., logs out)
+        if (status === "unauthenticated") {
+           setIsRedirecting(false);
+        }
+    }
+  }, [status, isAdmin, router]); 
+
+
   const handleReturnHome = () => {
     setIsRedirecting(true);
-    setTimeout(() => {
-      router.push("/");
-    }, 300);
+    router.push("/");
   };
 
   const handleSignOut = async () => {
     await signOut({ redirect: true, callbackUrl: "/" });
   };
 
-   const isAdmin = status === "authenticated" && session?.user?.isAdmin === true;
-   const userRole = session?.user?.role; 
-   const userEmail = session?.user?.email; 
-
-
-  useEffect(() => {
-    if (status === "authenticated" && !isAdmin) {
-      setIsRedirecting(true);
-      const timer = setTimeout(() => {
-        router.push("/");
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-    if (status === "unauthenticated") {
-        setIsRedirecting(false);
-    }
-  }, [status, isAdmin, router]);
 
   // --- Loading State ---
-  if (status === "loading") {
+  // Show loader if status is loading OR if authenticated but session data isn't available yet
+  if (status === "loading" || (status === "authenticated" && !session)) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
         <div className="text-center">
@@ -58,7 +66,8 @@ export default function AdminDashboard() {
   }
 
   // --- Unauthorized State ---
-  if (status === "unauthenticated" || (status === "authenticated" && !isAdmin)) { // Added check for authenticated but not admin
+  
+  if (status === "unauthenticated" || !isAdmin) { // if not authenticated OR (authenticated but not admin)
     return (
       <motion.div
         className="flex flex-col items-center justify-center h-screen bg-red-50 p-6 text-center"
@@ -72,27 +81,28 @@ export default function AdminDashboard() {
         <p className="text-md md:text-lg text-red-600 max-w-md mb-8">
           {status === 'unauthenticated'
             ? "You must be signed in as an administrator to access this page."
-            // Check if redirecting is true for the authenticated but not admin case
-            : isRedirecting ? "You are not authorized to view the admin dashboard. Redirecting..." : "You are not authorized to view the admin dashboard."
+            // Check isRedirecting flag set by useEffect
+            : isRedirecting ? "You do not have permission to view this page. Redirecting..." : "You do not have permission to view this page."
           }
         </p>
-        {/* Show loader only when redirecting for non-admin */}
+        {/* Show loader only when redirecting  */}
         {status === 'authenticated' && !isAdmin && isRedirecting && (
              <Loader2 className="h-8 w-8 animate-spin text-red-500 mb-8" />
         )}
         <motion.div
           className="flex flex-col sm:flex-row gap-4 w-full max-w-xs sm:max-w-none justify-center"
         >
+           {/* Show appropriate button based on authentication status */}
            {status === 'authenticated' && !isAdmin ? ( // Authenticated but not admin
                  <Button
                      onClick={handleReturnHome}
                      className="bg-primary-600 hover:bg-primary-700 flex items-center justify-center w-full sm:w-auto"
-                     disabled={isRedirecting} // Disable if redirecting
+                     disabled={isRedirecting}
                  >
                      <Home className="mr-2 h-4 w-4" />
                      Return Home Now
                  </Button>
-           ) : status === 'unauthenticated' ? ( 
+           ) : status === 'unauthenticated' ? (
                  <Button onClick={() => router.push('/api/auth/signin')} className="w-full sm:w-auto">
                      Sign In
                  </Button>
@@ -102,7 +112,6 @@ export default function AdminDashboard() {
       </motion.div>
     );
   }
-
   // --- Authorized Admin View ---
   // Ensure session is not null 
   if (!session) {

@@ -59,10 +59,11 @@ const TransactionDetailsModal = ({
         throw new Error(errorData.error || 'Failed to update status');
       }
       
-      // Success toast notification
+      // Success toast notification - using your design system colors
       toast.success(`Status Updated`, {
         description: `Transaction #${id} status updated to ${formatStatus(status)}.`,
         duration: 4000,
+        icon: <CircleCheck className="h-5 w-5" />,
       });
       
       if (res.ok && onTransactionUpdate) {
@@ -78,6 +79,7 @@ const TransactionDetailsModal = ({
       toast.error('Update Failed', {
         description: error instanceof Error ? error.message : 'Please try again.',
         duration: 5000,
+        icon: <XCircle className="h-5 w-5" />,
       });
     } finally {
       // Clear loading state
@@ -104,6 +106,7 @@ const TransactionDetailsModal = ({
       toast.success('Ticket Resent', {
         description: `Ticket for transaction #${id} was successfully resent to the customer.`,
         duration: 4000,
+        icon: <Ticket className="h-5 w-5" />,
       });
       
       if (res.ok && onTransactionUpdate) {
@@ -119,6 +122,7 @@ const TransactionDetailsModal = ({
       toast.error('Resend Failed', {
         description: error instanceof Error ? error.message : 'Please try again.',
         duration: 5000,
+        icon: <XCircle className="h-5 w-5" />,
       });
     } finally {
       // Clear loading state

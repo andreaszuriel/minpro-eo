@@ -54,7 +54,7 @@ export class TransactionService {
     });
   }
    // Create a new transaction
- static async createTransaction(data: Prisma.TransactionCreateInput) {
+   static async createTransaction(data: Prisma.TransactionCreateInput) {
     return prisma.$transaction(async (tx) => {  
       // Verify event exists and has enough seats
       const event = await tx.event.findUnique({
@@ -73,10 +73,20 @@ export class TransactionService {
       if (soldTickets + (data.ticketQuantity as number) > event.seats) {
         throw new Error("Not enough tickets available");
       }
-      
+   
+      console.log("Transaction data:", JSON.stringify(data));
+
+      // Make sure we're not passing an ID
+      const dataToUse = { ...data };
+      if ((dataToUse as any).id) {
+        delete (dataToUse as any).id;
+        
+      }
+    
       // Create the transaction
       const transaction = await tx.transaction.create({
-        data,
+        
+        data: dataToUse,
         include: {
           event: true,
           user: true,

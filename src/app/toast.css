@@ -1,0 +1,84 @@
+@layer components {
+    /* Define toast custom properties using your design system's OKLCH values */
+    :root {
+      --toaster-bg: #ffffff;
+      --toaster-border: #e2e8f0;
+      --toaster-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      
+      /* Match your primary color variables */
+      --toast-primary-500: var(--color-primary-500);
+      --toast-primary-600: var(--color-primary-600);
+      --toast-primary-700: var(--color-primary-700);
+  
+      /* Match your secondary color variables */
+      --toast-secondary-500: var(--color-secondary-500);
+      --toast-secondary-600: var(--color-secondary-600);
+      --toast-secondary-700: var(--color-secondary-700);
+      
+      /* For error states - using standard values since not in your theme */
+      --toast-error-500: oklch(67.3% 0.26 25.76deg); /* #ef4444 */
+      --toast-error-600: oklch(62.9% 0.27 25.65deg); /* #dc2626 */
+      --toast-error-700: oklch(58.2% 0.26 24.77deg); /* #b91c1c */
+    }
+  
+    /* Base toast styling */
+    [data-sonner-toast] {
+      border-radius: 0.75rem !important;
+      box-shadow: var(--toaster-shadow) !important;
+      border: 1px solid var(--toaster-border) !important;
+      background: var(--toaster-bg) !important;
+      padding: 1rem !important;
+      font-family: var(--font-basic) !important;
+    }
+  
+    /* Success toast styling */
+    [data-sonner-toast][data-type="success"] {
+      background: linear-gradient(to right, var(--color-secondary-600), var(--color-secondary-700)) !important;
+      color: white !important;
+      border-color: var(--color-secondary-500) !important;
+    }
+  
+    /* Error toast styling */
+    [data-sonner-toast][data-type="error"] {
+      background: linear-gradient(to right, var(--toast-error-600), var(--toast-error-700)) !important;
+      color: white !important;
+      border-color: var(--toast-error-500) !important;
+    }
+  
+    /* Toast title styling */
+    [data-sonner-toast] [data-title] {
+      font-weight: 600 !important;
+      margin-bottom: 2px !important;
+      font-family: var(--font-display) !important;
+    }
+  
+    /* Toast description styling */
+    [data-sonner-toast] [data-description] {
+      font-size: 0.875rem !important;
+      opacity: 0.9 !important;
+      margin-top: 2px !important;
+    }
+  
+    /* Icons in toast */
+    [data-sonner-toast] [data-icon] {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+  
+    /* Toast animation */
+    [data-sonner-toast] {
+      animation: toastSlideIn 0.3s ease forwards !important;
+    }
+  
+    @keyframes toastSlideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  }

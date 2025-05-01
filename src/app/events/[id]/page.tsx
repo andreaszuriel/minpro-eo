@@ -27,6 +27,7 @@ export interface FetchedConcertData {
   };
   price: Record<string, number>; 
   currency: string; 
+  averageRating: number | null; // Added explicitly to fix the missing rating issue
 }
 
 
@@ -80,6 +81,9 @@ export default function ConcertDetailPage() {
             console.error("Received incomplete/invalid data format:", data);
             throw new Error("Received invalid data format from API.");
         }
+
+        // Log the received average rating for debugging
+        console.log("Received concert data with averageRating:", data.averageRating);
 
         setConcert(data);
 
@@ -182,14 +186,15 @@ export default function ConcertDetailPage() {
   // Props for ConcertDescription 
   const concertDescProps = {
     id: concert.id,
-      title: concert.title,
-      artist: concert.artist,
-      startDate: concert.startDate,
-      time: time,
-      location: concert.location,
-      description: concert.description,
-      organizer: concert.organizer?.name ?? 'Unknown Organizer',
-      organizerId: concert.organizer?.id // Pass ID if link needs it
+    title: concert.title,
+    artist: concert.artist,
+    startDate: concert.startDate,
+    time: time,
+    location: concert.location,
+    description: concert.description,
+    organizer: concert.organizer?.name ?? 'Unknown Organizer',
+    organizerId: concert.organizer?.id, // Pass ID if link needs it
+    averageRating: concert.averageRating // Pass the average rating to the description component
   };
 
   // Props for TicketPurchaseBox 

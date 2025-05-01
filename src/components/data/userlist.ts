@@ -146,8 +146,8 @@ export const userList: UserItem[] = [
     role: 'organizer',
     points: 0, 
     referralCode: 'admin123',
-    isAdmin: true,
     image: 'https://i.pinimg.com/1200x/6e/59/95/6e599501252c23bcf02658617b29c894.jpg',
     emailVerified: new Date(),
+    isAdmin: true
   }
 ];

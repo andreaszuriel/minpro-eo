@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Ticket, ShoppingCart, Plus, Minus, AlertCircle } from 'lucide-react';
-
+import { useRouter } from 'next/navigation';
 
 interface TicketPurchaseBoxProps {
   concert: {
@@ -12,14 +12,15 @@ interface TicketPurchaseBoxProps {
     seats: number;
     tiers: string[]; 
     price: Record<string, number>; 
-    currency: string; 
+    currency: string;
+    title?: string; 
   };
   selectedTier: string;
   setSelectedTier: (value: string) => void;
   quantity: number;
   setQuantity: (value: number) => void;
   totalPrice: number;
-  formatCurrency: (amount: number) => string; // Use the passed function
+  formatCurrency: (amount: number) => string;
 }
 
 export default function TicketPurchaseBox({
@@ -31,6 +32,8 @@ export default function TicketPurchaseBox({
   totalPrice,
   formatCurrency, 
 }: TicketPurchaseBoxProps) {
+  const router = useRouter();
+  
   // State derived from props 
   const [remainingSeats, setRemainingSeats] = useState<number>(concert?.seats ?? 0);
   const [isLowStock, setIsLowStock] = useState<boolean>(false);
@@ -41,13 +44,12 @@ export default function TicketPurchaseBox({
   const month = eventDate.toLocaleString('default', { month: 'short' });
   const formattedEventDate = eventDate.toLocaleDateString('en-US', { weekday: 'long' });
 
-
   useEffect(() => {
     // Update derived state when concert prop changes
     const seats = concert?.seats ?? 0;
     setRemainingSeats(seats);
-    setIsLowStock(seats > 0 && seats < 50); // Only low stock if seats > 0
-  }, [concert?.seats]); // Depend on concert.seats
+    setIsLowStock(seats > 0 && seats < 50); 
+  }, [concert?.seats]); 
 
   // Calculate discount based on fetched price
   // Ensure selectedTier is valid and price exists
@@ -61,18 +63,44 @@ export default function TicketPurchaseBox({
 
   const incrementQuantity = () => {
     // Add check against remaining seats
-    if (quantity < 10 && quantity < remainingSeats ) setQuantity(quantity + 1);
+    if (quantity < 10 && quantity < remainingSeats) setQuantity(quantity + 1);
   };
 
   const decrementQuantity = () => {
     if (quantity > 1) setQuantity(quantity - 1);
   };
 
+  // Handle Purchase
+  const handlePurchase = () => {
+    if (!selectedTier || quantity <= 0 || currentTierPrice <= 0) return;
+    
+    // Create purchase data object
+    const purchaseData = {
+      eventId: concert.id,
+      tier: selectedTier,
+      quantity: quantity,
+      unitPrice: currentTierPrice,
+      totalPrice: totalPrice,
+      eventDate: concert.startDate,
+      eventTime: concert.time,
+      currency: concert.currency,
+      hasDiscount: hasDiscount,
+      originalPrice: originalPrice,
+      eventTitle: concert.title || "Concert Event",
+    };
+    
+    // Store data in localStorage for confirmation page
+    localStorage.setItem('pendingPurchase', JSON.stringify(purchaseData));
+    
+    // Navigate to confirmation page
+    router.push(`/purchase-confirmation?eventId=${concert.id}`);
+  };
+
   // Ensure selectedTier exists in concert.price before trying to display it
   const displayPriceForSelectedTier = formatCurrency(currentTierPrice);
 
   return (
-    <div className="w-full md:w-1/3 bg-white backdrop-blur-sm shadow-xl rounded-xl overflow-hidden order-1 md:order-2 border border-slate-200">
+    <div className="h-fit w-full md:w-1/3 bg-white backdrop-blur-sm shadow-xl rounded-xl overflow-hidden order-1 md:order-2 border border-slate-200">
       {/* Event Date Header */}
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-4 flex items-center justify-between">
         <div className="flex items-center">
@@ -84,7 +112,6 @@ export default function TicketPurchaseBox({
             <h4 className="font-bold">Event Date</h4>
             <div className="flex items-center text-sm">
               <Calendar className="h-4 w-4 mr-1" />
-              {/* Use formatted date and time */}
               <span>{formattedEventDate}</span>
               <span className="mx-1">•</span>
               <Clock className="h-4 w-4 mr-1" />
@@ -174,8 +201,8 @@ export default function TicketPurchaseBox({
                 </div>
                 <button
                   onClick={incrementQuantity}
-                  disabled={quantity >= 10 || !selectedTier /* || quantity >= remainingSeats */}
-                  className={`p-2 ${quantity >= 10 || !selectedTier ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-slate-100'}`}
+                  disabled={quantity >= 10 || !selectedTier || quantity >= remainingSeats}
+                  className={`p-2 ${quantity >= 10 || !selectedTier || quantity >= remainingSeats ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-slate-100'}`}
                   aria-label="Increase quantity"
                 >
                   <Plus className="h-5 w-5" />
@@ -225,14 +252,13 @@ export default function TicketPurchaseBox({
 
 
             {/* Buy Button (Disable if no tier selected) */}
-            {/* ADD onClick handler for purchase */}
             <Button
               className="w-full py-6 text-lg bg-secondary-600 hover:bg-secondary-700 transition-all shadow-lg shadow-secondary-500/20 group disabled:bg-gray-400 disabled:cursor-not-allowed"
               disabled={!selectedTier || quantity <= 0 || currentTierPrice <= 0}
-              onClick={() => { /* TODO: Implement purchase logic */ console.log('Buying:', { tier: selectedTier, quantity, totalPrice });}}
+              onClick={handlePurchase}
             >
               <ShoppingCart className="mr-2 h-5 w-5 transition-transform group-hover:scale-110" />
-              BUY TICKETS
+              REVIEW & CHECKOUT
             </Button>
 
             {/* Extra info */}

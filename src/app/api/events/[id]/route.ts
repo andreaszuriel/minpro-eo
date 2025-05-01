@@ -40,8 +40,6 @@ export async function GET(
     const priceData = event.price as PriceObject | null;
     const tiers = priceData ? Object.keys(priceData) : [];
 
-    // 2. Determine Currency (!! IMPORTANT: Add 'currency' field to Prisma schema !!)
-    //    Using placeholder - replace with actual logic/schema field
     const currency = "IDR"; // <<--- TODO: Replace with dynamic currency
 
     // 3. Construct the final *direct* response object
@@ -71,7 +69,7 @@ export async function GET(
 }
 
 
-// --- PUT (Update) Event (Keep your existing logic) ---
+// --- PUT (Update) Event ---
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -86,7 +84,6 @@ export async function PUT(
     const data = await req.json();
 
     // --- Input Validation (Basic Add more) ---
-    // ... (keep your validation)
      if (!data.title && !data.artist && !data.genreName && !data.countryCode /* ... other fields ... */ && !data.price && !data.tiers && data.seats === undefined && data.description === undefined && data.image === undefined) {
       return NextResponse.json({ error: "No update data provided" }, { status: 400 });
      }

@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { customAlphabet } from 'nanoid';
 
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -50,4 +51,29 @@ export class ApiError extends Error {
     super(message);
     this.statusCode = statusCode;
   }
+}
+
+// lib/reviews.ts (or similar utility file)
+import { prisma } from './prisma';
+
+export async function updateEventAverageRating(eventId: number) {
+    try {
+        const ratingAggregation = await prisma.review.aggregate({
+            _avg: { rating: true },
+            where: { eventId: eventId },
+        });
+
+        const newAverage = ratingAggregation._avg.rating; // Can be null if no reviews
+
+        await prisma.event.update({
+            where: { id: eventId },
+            data: {
+                averageRating: newAverage, // Update the field in the Event table
+            },
+        });
+         console.log(`Updated average rating for event ${eventId} to ${newAverage}`);
+
+    } catch (error) {
+        console.error(`Failed to update average rating for event ${eventId}:`, error);
+    }
 }

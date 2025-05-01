@@ -5,6 +5,8 @@ import { countryList } from '../src/components/data/countrylist'; // Ensure this
 import { userList } from '../src/components/data/userlist'; // Ensure this path is correct
 import { transactionList, ticketList } from '../src/components/data/transactionlist'; // Ensure this path is correct
 import { saltAndHashPassword } from '../src/utils/password'; // Ensure this path is correct
+import { reviewList } from '../src/components/data/reviewlist'; // Ensure this path is correct
+import { updateEventAverageRating } from '../src/lib/utils'; 
 
 const prisma = new PrismaClient();
 
@@ -235,6 +237,78 @@ async function main() {
     }
   }
    console.log(`✅ Tickets seeded: ${ticketCount}/${ticketList.length}`);
+
+   console.log('🌱 Seeding reviews...');
+   let reviewCount = 0;
+   const reviewedEventIds = new Set<number>();
+ 
+   for (const review of reviewList) {
+     // Ensure referenced event and user exist
+     const userExists = await prisma.user.findUnique({ where: { id: review.userId }, select: { id: true } });
+     const eventExists = await prisma.event.findUnique({ where: { id: review.eventId }, select: { id: true } });
+ 
+     if (!userExists) {
+       console.error(`❌ Skipping review ID ${review.id}: User with ID ${review.userId} not found.`);
+       continue;
+     }
+     if (!eventExists) {
+       console.error(`❌ Skipping review ID ${review.id}: Event with ID ${review.eventId} not found.`);
+       continue;
+     }
+ 
+     try {
+       console.log(` -> Upserting review ID: ${review.id} by User: ${review.userId} for Event: ${review.eventId}`);
+       const reviewData = {
+         userId: review.userId,
+         eventId: review.eventId,
+         rating: review.rating,
+         comment: review.comment,
+         createdAt: new Date(review.createdAt),
+         updatedAt: new Date(review.updatedAt),
+       };
+ 
+       await prisma.review.upsert({
+         where: { id: review.id },
+         update: {
+           ...reviewData,
+           updatedAt: new Date(),
+         },
+         create: {
+           id: review.id,
+           ...reviewData,
+         },
+       });
+ 
+
+       reviewedEventIds.add(review.eventId); 
+       reviewCount++;
+     } catch (error: any) {
+       console.error(`❌ Failed to upsert review ID: ${review.id}`);
+       if (error.code === 'P2003') {
+         console.error(`   Foreign Key constraint violated. Field: ${error.meta?.field_name}. Check userId ${review.userId}, eventId ${review.eventId}.`);
+       } else if (error.code === 'P2002') {
+         console.error(`   Unique constraint violated. Field: ${error.meta?.target}. Is review ID ${review.id} already used?`);
+       } else {
+         console.error(error);
+       }
+     }
+   }
+ 
+   console.log(`✅ Reviews seeded: ${reviewCount}/${reviewList.length}`);
+ 
+   console.log('🔄 Calculating and updating average ratings for seeded reviews...');
+   let updatedRatingCount = 0;
+   for (const eventId of reviewedEventIds) {
+       try {
+           console.log(`   -> Updating average rating for Event ID: ${eventId}`);
+           await updateEventAverageRating(eventId); // Call the utility function
+           updatedRatingCount++;
+       } catch (error) {
+           // Log error from the update function itself (it already has console.error)
+           console.error(`   ❌ Failed to update average rating for Event ID: ${eventId} during post-seed update.`);
+       }
+   }
+   console.log(`✅ Average ratings updated for ${updatedRatingCount}/${reviewedEventIds.size} events affected by review seeding.`);
 
   console.log('🎉 Seeding completed successfully.');
 }
