@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { getTokenFromRequest } from "./auth-helpers";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,16 +18,38 @@ export async function middleware(request: NextRequest) {
     
   }
 
-  // Use short cache for performance 
-  const token = await getToken({
+  // Log all cookies for debugging
+  console.log("MIDDLEWARE: All cookies:", 
+    Object.fromEntries(
+      request.cookies.getAll().map(c => [c.name, c.value.substring(0, 5) + "..."])
+    )
+  );
+
+  // First try with standard getToken
+  let token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
     secureCookie: process.env.NODE_ENV === "production",
   });
   
+  // If standard getToken fails, try our custom implementation
+  if (!token) {
+    console.log("MIDDLEWARE: Standard getToken failed, trying custom implementation");
+    token = await getTokenFromRequest(request);
+  }
+  
   console.log("MIDDLEWARE: Token exists?", !!token);
-  console.log("MIDDLEWARE: Cookie:", request.cookies.get("next-auth.session-token")?.value?.substring(0, 5) + "..." || 
-               request.cookies.get("__Secure-next-auth.session-token")?.value?.substring(0, 5) + "...");
+  
+  // Check all possible cookie variants
+  const nextAuthCookie = request.cookies.get("next-auth.session-token");
+  const secureNextAuthCookie = request.cookies.get("__Secure-next-auth.session-token");
+  const authJsCookie = request.cookies.get("authjs.session-token");
+  const secureAuthJsCookie = request.cookies.get("__Secure-authjs.session-token");
+  
+  console.log("MIDDLEWARE: next-auth Cookie:", nextAuthCookie?.value?.substring(0, 5) + "..." || "Not found");
+  console.log("MIDDLEWARE: Secure next-auth Cookie:", secureNextAuthCookie?.value?.substring(0, 5) + "..." || "Not found");
+  console.log("MIDDLEWARE: authjs Cookie:", authJsCookie?.value?.substring(0, 5) + "..." || "Not found");
+  console.log("MIDDLEWARE: Secure authjs Cookie:", secureAuthJsCookie?.value?.substring(0, 5) + "..." || "Not found"); 
 
   // Define constants for path patterns - easier to maintain
   const PUBLIC_EXACT_PATHS = [
@@ -65,19 +88,6 @@ export async function middleware(request: NextRequest) {
       console.log("MIDDLEWARE: No token for admin route, redirecting to admin login");
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
-    
-  // Check if user is an admin (COMMENT THIS BLOCK OUT)
-    // VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
-    /*  <-- Add this line to start the comment block
-    if (!token.isAdmin) {
-      console.log("MIDDLEWARE: User is not an admin, access denied");
-      // Store the original URL for post-login redirect
-      const redirectUrl = new URL('/', request.url);
-      redirectUrl.searchParams.set('error', 'insufficient_permissions');
-      return NextResponse.redirect(redirectUrl);
-    }
-    */ // <-- Add this line to end the comment block
-    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     
     console.log("MIDDLEWARE: Admin access granted");
     return NextResponse.next();
