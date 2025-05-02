@@ -15,10 +15,10 @@ import { formatCurrency } from '@/lib/utils';
 import type { Event, Transaction, TransactionStatus, Genre, Country } from '@prisma/client';
 import DashboardLayout from '@/components/atoms/DashboardLayout';
 import { User } from "next-auth";
-import EventsTab from '@/components/atoms/DashboardEvents';
-import DashboardTransactions, { ExtendedTransaction } from '@/components/atoms/DashboardTransactions';
-import DashboardOverview from '@/components/atoms/DashboardOverview'; 
-import DashboardStats from '@/components/atoms/DashboardStats'; 
+import EventsTab from '@/components/atoms/Organizers/DashboardEvents';
+import DashboardTransactions, { ExtendedTransaction } from '@/components/atoms/Organizers/DashboardTransactions';
+import DashboardOverview from '@/components/atoms/Organizers/DashboardOverview'; 
+import DashboardStats from '@/components/atoms/Organizers/DashboardStats'; 
 
 // --- Interfaces  ---
 // TODO: Move these interfaces to a separate file (e.g., @/types/dashboard.ts) for better organization
@@ -31,6 +31,7 @@ export interface OrganizerDashboardProps {
     role: 'customer' | 'organizer';
     referralCode?: string | null;
     image?: string | null;
+    isAdmin: boolean;
   };
 }
 
@@ -61,7 +62,7 @@ export type EventPerformanceData = { name: string; revenue: number; ticketsSold:
 export type { TransactionStatus };
 
 // --- Utility functions specific to dashboard data processing ---
-// Keep utilities used for data fetching and processing in the main component
+
 function processEvents(fetchedEvents: FetchedEvent[], transactions: ExtendedTransaction[]): ExtendedEvent[] {
     return fetchedEvents.map(event => {
         const eventTransactions = transactions.filter(t => t.eventId === event.id && t.status === 'PAID');
@@ -237,7 +238,7 @@ export default function OrganizerDashboard({ user }: OrganizerDashboardProps) {
   // Define Action Button for Organizer
   const actionButton = user?.id ? ( // Ensure user.id exists before creating link
     <Link href={`/organizer/events/${user.id}/create`} passHref>
-      <Button className="bg-secondary-600 hover:bg-secondary-700 cursor-pointer">
+      <Button className="bg-secondary-600 hover:bg-primary-500 cursor-pointer">
         <Plus className="mr-2 h-5 w-5" />Create New Event
       </Button>
     </Link>

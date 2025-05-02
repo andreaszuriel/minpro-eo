@@ -194,7 +194,7 @@ export default function DashboardOverview({
                   {event.image ? <Image src={event.image} alt={event.title} fill className="object-cover" sizes="48px" /> : <Calendar className="h-full w-full bg-gray-200 p-3 text-gray-400" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-sm truncate">{event.title}</h3>
+                  <h3 className="text-black font-medium text-sm truncate">{event.title}</h3>
                   <div className="flex items-center text-xs text-gray-500">
                       <Calendar className="mr-1 h-3 w-3" />
                       {format(new Date(event.startDate), 'MMM d, yyyy')}

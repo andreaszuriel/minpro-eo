@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import type { TransactionStatus } from '@prisma/client';
-import type { ExtendedTransaction } from './DashboardTransactions';
+import type { ExtendedTransaction } from './Organizers/DashboardTransactions';
 
 interface TransactionDetailsModalProps {
   isOpen: boolean;

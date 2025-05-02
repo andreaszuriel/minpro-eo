@@ -253,7 +253,7 @@ export default function TicketPurchaseBox({
 
             {/* Buy Button (Disable if no tier selected) */}
             <Button
-              className="w-full py-6 text-lg bg-secondary-600 hover:bg-secondary-700 transition-all shadow-lg shadow-secondary-500/20 group disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="cursor-pointer w-full py-6 text-lg bg-secondary-600 hover:bg-secondary-700 transition-all shadow-lg shadow-secondary-500/20 group disabled:bg-gray-400 disabled:cursor-not-allowed"
               disabled={!selectedTier || quantity <= 0 || currentTierPrice <= 0}
               onClick={handlePurchase}
             >

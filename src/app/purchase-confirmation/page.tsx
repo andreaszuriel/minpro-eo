@@ -423,7 +423,7 @@ export default function PurchaseConfirmationPage() {
             <Button 
               onClick={handleConfirmPurchase}
               disabled={isSubmitting || !purchaseData}
-              className="bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-500/20"
+              className="cursor-pointer bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-500/20"
             >
               {isSubmitting ? (
                 <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Processing...</>

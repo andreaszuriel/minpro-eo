@@ -30,6 +30,7 @@ interface ProfileModalProps {
   };
   handleProfileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   updateProfile: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  loading: boolean; 
 }
 
 export default function ProfileModal({
@@ -128,9 +129,9 @@ export default function ProfileModal({
 
   return (
     <>
-      <Toaster position="top-right" richColors />
+      <Toaster position="bottom-right" richColors />
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div className="w-full max-w-md rounded-xl overflow-hidden bg-white shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-5">
+      <div className="w-full max-w-md rounded-xl overflow-hidden bg-white shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-5 flex flex-col max-h-[90vh]"> 
         {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-5">
             <div className="flex items-center justify-between">
@@ -161,7 +162,8 @@ export default function ProfileModal({
             </div>
           </div>
 
-          <div className="p-6">
+          {/* Content Area*/}
+          <div className="p-6 overflow-y-auto">
            {/* Basic Info */}
             <div className="space-y-5">
               <div>
