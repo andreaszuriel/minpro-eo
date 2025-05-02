@@ -3,7 +3,7 @@ import { TransactionService } from "@/services/transactions.service";
 import { ApiError, isValidStatus } from "@/lib/utils";
 import { TransactionStatus, Prisma } from "@prisma/client"; 
 
-// Error handling wrapper (keep as is)
+// Error handling wrapper 
 const handleApiRoute = async (req: NextRequest, handler: () => Promise<Response>) => {
   try {
     return await handler();
@@ -40,7 +40,6 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } } 
 ) {
-
   const transactionIdStr = params.id;
 
   return handleApiRoute(req, async () => {
@@ -57,7 +56,7 @@ export async function GET(
       console.log(`GET /api/transactions/${id} - Transaction not found`); 
       throw new ApiError("Transaction not found", 404);
     }
-    console.log(`GET /api/transactions/${id} - Found transaction:`, transaction.status, transaction.paymentDeadline); // Add log
+    console.log(`GET /api/transactions/${id} - Found transaction:`, transaction.status, transaction.paymentDeadline);
 
     return new Response(JSON.stringify(transaction), { status: 200 });
   });
@@ -68,7 +67,6 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } } 
 ) {
- 
   const transactionIdStr = params.id;
 
   return handleApiRoute(req, async () => {
@@ -94,7 +92,7 @@ export async function PUT(
         throw new ApiError("Status is required for PUT operation", 400);
     }
 
-    console.log(`PUT /api/transactions/${id} - Updating status to ${data.status} with data:`, updateData); // Add log
+    console.log(`PUT /api/transactions/${id} - Updating status to ${data.status} with data:`, updateData);
 
     const transaction = await TransactionService.updateTransactionStatus(
       id,
@@ -111,7 +109,6 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } } 
 ) {
-  
   const transactionIdStr = params.id;
 
   return handleApiRoute(req, async () => {
@@ -141,19 +138,17 @@ export async function PATCH(
     if (newStatus) {
         statusToUpdate = newStatus;
     } else {
-       
-         if (Object.keys(updateData).length === 0 && !newStatus) {
-             throw new ApiError("No fields provided to update.", 400);
-         }
+        if (Object.keys(updateData).length === 0 && !newStatus) {
+            throw new ApiError("No fields provided to update.", 400);
+        }
         
-         if (!newStatus) {
-             throw new ApiError("Status update is required for PATCH via this method.", 400);
-         }
-         statusToUpdate = newStatus;
+        if (!newStatus) {
+            throw new ApiError("Status update is required for PATCH via this method.", 400);
+        }
+        statusToUpdate = newStatus;
     }
 
-    console.log(`PATCH /api/transactions/${id} - Patching status to ${statusToUpdate} with data:`, updateData); // Add log
-
+    console.log(`PATCH /api/transactions/${id} - Patching status to ${statusToUpdate} with data:`, updateData);
    
     const transaction = await TransactionService.updateTransactionStatus(
         id,
@@ -162,5 +157,31 @@ export async function PATCH(
     );
 
     return new Response(JSON.stringify(transaction), { status: 200 });
+  });
+}
+
+// --- POST Handler - endpoint to resend tickets
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const transactionIdStr = params.id;
+
+  return handleApiRoute(req, async () => {
+    const id = parseInt(transactionIdStr);
+    if (isNaN(id)) {
+      throw new ApiError("Invalid transaction ID format", 400);
+    }
+
+    const data = await req.json();
+    const { action } = data;
+
+    // Only support the resend_tickets action for now
+    if (action === 'resend_tickets') {
+      await TransactionService.resendTickets(id);
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }
+
+    throw new ApiError("Unsupported action", 400);
   });
 }
