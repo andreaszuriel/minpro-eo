@@ -23,7 +23,44 @@ export class TransactionService {
   
     return;
   }
-    // Get a transaction by ID with related data
+
+  static async getCustomerTransactions(userId: string) {
+    return prisma.transaction.findMany({
+      where: {
+        userId: userId, // Filter by the user who made the transaction
+      },
+      include: {
+        event: { // Include related event data
+          select: { // Select only the fields needed by the frontend
+            id: true,
+            title: true,
+            image: true,
+            startDate: true,
+            location: true,
+          },
+        },
+        tickets: { // Include related tickets for this transaction
+          select: { // Select only the fields needed by the frontend
+            id: true, // Good to have the ticket ID too
+            serialCode: true,
+            isUsed: true,
+            tierType: true, // Match the transaction tier type
+            createdAt: true, // Might be useful
+            updatedAt: true, // Might be useful
+          },
+          orderBy: { // Optional: order tickets if needed
+            createdAt: 'asc',
+          }
+        },
+      },
+      orderBy: {
+        createdAt: "desc", // Show the most recent transactions first
+      },
+    });
+  }
+
+
+  // Get a transaction by ID with related data
   static async getTransactionById(id: number) {
     return prisma.transaction.findUnique({
       where: { id },
