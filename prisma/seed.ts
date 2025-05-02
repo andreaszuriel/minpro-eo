@@ -1,56 +1,87 @@
-import { PrismaClient } from '@prisma/client';
-import { concertList } from '../src/components/data/concertlist2'; // Ensure this path is correct
-import { genreList } from '../src/components/data/genrelist'; // Ensure this path is correct
-import { countryList } from '../src/components/data/countrylist'; // Ensure this path is correct
-import { userList } from '../src/components/data/userlist'; // Ensure this path is correct
-import { transactionList, ticketList } from '../src/components/data/transactionlist'; // Ensure this path is correct
-import { saltAndHashPassword } from '../src/utils/password'; // Ensure this path is correct
-import { reviewList } from '../src/components/data/reviewlist'; // Ensure this path is correct
+import { PrismaClient, UserRole } from '@prisma/client';
+import { concertList } from '../src/components/data/concertlist2'; 
+import { genreList } from '../src/components/data/genrelist'; 
+import { countryList } from '../src/components/data/countrylist'; 
+import { userList } from '../src/components/data/userlist'; 
+import { transactionList, ticketList } from '../src/components/data/transactionlist'; 
+import { saltAndHashPassword } from '../src/utils/password'; 
+import { reviewList } from '../src/components/data/reviewlist'; 
 import { updateEventAverageRating } from '../src/lib/utils'; 
+import { addMonths } from 'date-fns';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🧹 Cleaning up existing data (optional but recommended for dev)...');
-  // Optional: Add cleanup logic if needed, e.g., deleting in reverse order of creation
-  // await prisma.ticket.deleteMany({});
-  // await prisma.transaction.deleteMany({});
-  // await prisma.event.deleteMany({});
-  // await prisma.country.deleteMany({});
-  // await prisma.genre.deleteMany({});
-  // await prisma.user.deleteMany({}); // Be careful with deleting users if other things depend on them outside seeding
-
+  console.log('🧹 Cleaning up existing seeded data...');
+  // Delete in reverse order (adjust if needed)
+  await prisma.review.deleteMany({});
+  await prisma.ticket.deleteMany({});
+  await prisma.transaction.deleteMany({});
+  await prisma.event.deleteMany({});
+  await prisma.coupon.deleteMany({}); // Assuming no coupons seeded here, but good practice
+  await prisma.pointTransaction.deleteMany({});
+  await prisma.account.deleteMany({});
+  await prisma.session.deleteMany({});
+  await prisma.authenticator.deleteMany({});
+  await prisma.user.deleteMany({});
+  await prisma.genre.deleteMany({});
+  await prisma.country.deleteMany({});
+  console.log('✅ Cleanup finished.');;
+  
   console.log('🌱 Seeding users...');
   for (const user of userList) {
-    const hashedPassword = await saltAndHashPassword(user.password); // Make sure password isn't null/undefined
+    const hashedPassword = await saltAndHashPassword(user.password);
     await prisma.user.upsert({
       where: { id: user.id },
-      update: { // Update existing users too
-        name: user.name,
-        email: user.email,
-        password: hashedPassword,
-        role: user.role,
-        points: user.points,
-        referralCode: user.referralCode,
-        image: user.image,
-        emailVerified: user.emailVerified ? new Date(user.emailVerified) : null, // Handle optional verified date
-        updatedAt: new Date(), // Explicitly set update time
+      update: {
+        name: user.name, email: user.email, password: hashedPassword,
+        role: user.role, points: user.points, 
+        referralCode: user.referralCode, image: user.image,
+        emailVerified: user.emailVerified, updatedAt: new Date(), isAdmin: user.isAdmin,
       },
       create: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        password: hashedPassword,
-        role: user.role,
-        points: user.points,
-        referralCode: user.referralCode,
-        image: user.image,
-        emailVerified: user.emailVerified ? new Date(user.emailVerified) : null,
+        id: user.id, name: user.name, email: user.email, password: hashedPassword,
+        role: user.role, points: user.points, referralCode: user.referralCode,
+        image: user.image, emailVerified: user.emailVerified, isAdmin: user.isAdmin,
       },
     });
   }
   console.log(`✅ Users seeded: ${userList.length}`);
 
+ 
+  console.log('🌱 Seeding initial Point Transactions...');
+  let pointTxnCount = 0;
+  const now = new Date();
+  for (const user of userList) {
+    if (user.points > 0) {
+      try {
+        const expiresAt = addMonths(now, 3);
+
+        console.log(` -> Creating PointTransaction for User: ${user.id}, Points: ${user.points}, Expires: ${expiresAt.toISOString()}`);
+
+        await prisma.pointTransaction.create({
+          data: {
+            userId: user.id,
+            points: user.points,
+            description: 'Initial seeded points',
+            expiresAt: expiresAt,
+            isExpired: false, // Explicitly false
+            // createdAt defaults to now()
+          },
+        });
+        pointTxnCount++;
+      } catch (error: any) {
+         console.error(`❌ Failed to create PointTransaction for User ID: ${user.id}`);
+         // Handle potential errors like user not found (though unlikely if user seeding succeeded)
+         if (error.code === 'P2003') {
+             console.error(`   Foreign Key constraint violated. Does User ID ${user.id} exist?`);
+         } else {
+             console.error(error);
+         }
+      }
+    }
+  }
+  console.log(`✅ Initial Point Transactions seeded: ${pointTxnCount}`);
   console.log('🌱 Seeding genres...');
   for (const g of genreList) {
     await prisma.genre.upsert({
@@ -310,7 +341,48 @@ async function main() {
    }
    console.log(`✅ Average ratings updated for ${updatedRatingCount}/${reviewedEventIds.size} events affected by review seeding.`);
 
-  console.log('🎉 Seeding completed successfully.');
+     // --- RESET SEQUENCES (Add this section AFTER seeding data) ---
+  console.log('🔄 Resetting ID sequences for auto-increment tables...');
+  try {
+    // Use $executeRawUnsafe. The SQL string now directly includes the double quotes
+    // needed by PostgreSQL without extra JavaScript escaping backslashes.
+
+    // Reset sequence for Genre
+    // Correct syntax: Double quotes directly in the string
+    await prisma.$executeRawUnsafe(`SELECT setval('"Genre_id_seq"', COALESCE((SELECT MAX(id) FROM "Genre"), 0) + 1, false);`);
+    console.log("   -> Genre sequence reset.");
+
+    // Reset sequence for Country
+    await prisma.$executeRawUnsafe(`SELECT setval('"Country_id_seq"', COALESCE((SELECT MAX(id) FROM "Country"), 0) + 1, false);`);
+     console.log("   -> Country sequence reset.");
+
+    // Reset sequence for Event
+    await prisma.$executeRawUnsafe(`SELECT setval('"Event_id_seq"', COALESCE((SELECT MAX(id) FROM "Event"), 0) + 1, false);`);
+     console.log("   -> Event sequence reset.");
+
+    // Reset sequence for Transaction
+    await prisma.$executeRawUnsafe(`SELECT setval('"Transaction_id_seq"', COALESCE((SELECT MAX(id) FROM "Transaction"), 0) + 1, false);`);
+     console.log("   -> Transaction sequence reset.");
+
+    // Reset sequence for Review
+    await prisma.$executeRawUnsafe(`SELECT setval('"Review_id_seq"', COALESCE((SELECT MAX(id) FROM "Review"), 0) + 1, false);`);
+    console.log("   -> Review sequence reset.");
+
+    // Reset sequence for Coupon
+     await prisma.$executeRawUnsafe(`SELECT setval('"Coupon_id_seq"', COALESCE((SELECT MAX(id) FROM "Coupon"), 0) + 1, false);`);
+     console.log("   -> Coupon sequence reset.");
+
+    // Add any other tables with auto-incrementing integer IDs here...
+
+    console.log('✅ Sequences reset successfully.');
+  } catch (error) {
+      console.error('❌ Failed to reset sequences:', error);
+      // process.exit(1); // Optionally exit if sequence reset fails
+  }
+  // --- End Reset Sequences Section -
+  
+  
+   console.log('🎉 Seeding completed successfully.');
 }
 
 main()
