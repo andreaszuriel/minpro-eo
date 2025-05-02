@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import type { TransactionStatus } from '@prisma/client';
-import type { ExtendedTransaction } from './Organizers/DashboardTransactions';
+import type { ExtendedTransaction } from './DashboardTransactions';
 
 interface TransactionDetailsModalProps {
   isOpen: boolean;
@@ -87,48 +87,51 @@ const TransactionDetailsModal = ({
     }
   };
 
-  const resendTicket = async (id: number) => {
-    // Set loading state
-    setLoadingAction({ id, type: 'resend' });
-    
-    try {
-      const res = await fetch(`/api/transactions/${id}/resend-ticket`, { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to resend ticket');
-      }
-      
-      // Success toast
-      toast.success('Ticket Resent', {
-        description: `Ticket for transaction #${id} was successfully resent to the customer.`,
-        duration: 4000,
-        icon: <Ticket className="h-5 w-5" />,
-      });
-      
-      if (res.ok && onTransactionUpdate) {
-        onTransactionUpdate(id, transaction.status);
-      }
+// Inside TransactionModal.tsx
 
-      // Close modal on success
-      setTimeout(() => onClose(), 800);
-    } catch (error) {
-      console.error('Failed to resend ticket:', error);
-      
-      // Error toast
-      toast.error('Resend Failed', {
-        description: error instanceof Error ? error.message : 'Please try again.',
-        duration: 5000,
-        icon: <XCircle className="h-5 w-5" />,
-      });
-    } finally {
-      // Clear loading state
-      setLoadingAction({ id: null, type: null });
+const resendTicket = async (id: number) => {
+  setLoadingAction({ id, type: 'resend' });
+  
+  try {
+    const res = await fetch(`/api/transactions/${id}/resend-tickets`, { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'resend_tickets' }) // Send the action payload
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      // Use the message from the backend if available
+      throw new Error(errorData.message || errorData.error || 'Failed to resend ticket'); 
     }
-  };
+    
+    const responseData = await res.json(); // Get the success message from backend
+
+    toast.success('Ticket Resent', {
+      // Use the message from the backend response
+      description: responseData.message || `Ticket for transaction #${id} was successfully resent.`,
+      duration: 4000,
+      icon: <Ticket className="h-5 w-5" />,
+    });
+    
+    // No need to call onTransactionUpdate here unless resending changes status (it shouldn't)
+    // if (res.ok && onTransactionUpdate) {
+    //   onTransactionUpdate(id, transaction.status); 
+    // }
+
+    setTimeout(() => onClose(), 800); 
+  } catch (error) {
+    console.error('Failed to resend ticket:', error);
+    
+    toast.error('Resend Failed', {
+      description: error instanceof Error ? error.message : 'Please try again.',
+      duration: 5000,
+      icon: <XCircle className="h-5 w-5" />,
+    });
+  } finally {
+    setLoadingAction({ id: null, type: null });
+  }
+};
 
   if (!isOpen) return null;
 

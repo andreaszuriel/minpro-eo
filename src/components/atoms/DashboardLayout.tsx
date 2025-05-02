@@ -377,7 +377,7 @@ export default function DashboardLayout({ user, tabs, renderTabContent, actionBu
           handleProfileChange={handleProfileChange}
           updateProfile={updateProfile}
           loading={loadingProfileUpdate} // Pass the correct loading state
-        />
+          profileUpdateLoading={false}        />
       )}
     </div>
   );

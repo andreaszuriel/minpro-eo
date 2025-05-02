@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import type { Transaction, TransactionStatus } from '@prisma/client';
-import TransactionDetailsModal from '../TransactionDetailsModal';
+import TransactionDetailsModal from './TransactionDetailsModal';
 
 // --- Interfaces ---
 export type ExtendedTransaction = Transaction & {

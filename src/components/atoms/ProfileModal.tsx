@@ -6,13 +6,10 @@ import {
   User,
   Mail,
   Info,
-  Key,
   Save,
   XCircle,
-  Shield,
-  EyeOff,
-  Eye,
   Upload,
+  Loader2,
   Image as ImageIcon
 } from "lucide-react";
 import Image from "next/image";
@@ -23,14 +20,12 @@ interface ProfileModalProps {
   profileData: {
     name: string;
     email: string;
-    currentPassword: string;
-    newPassword: string;
-    confirmPassword: string;
     image?: string;
   };
   handleProfileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   updateProfile: (e: React.MouseEvent<HTMLButtonElement>) => void;
   loading: boolean; 
+  profileUpdateLoading: boolean;
 }
 
 export default function ProfileModal({
@@ -38,15 +33,14 @@ export default function ProfileModal({
   onClose,
   profileData,
   handleProfileChange,
-  updateProfile
+  updateProfile,
+  profileUpdateLoading 
 }: ProfileModalProps) {
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(profileData.image || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,6 +117,38 @@ export default function ProfileModal({
     toast.success("Profile Updated", {
       description: "Your profile changes have been saved successfully.",
     });
+  };
+
+  const handleForgotPassword = async () => {
+    setForgotPasswordLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: profileData.email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Use backend message if available, otherwise generic
+        throw new Error(data.message || "Failed to send reset link.");
+      }
+
+      // Show the generic success message from the backend
+      toast.info("Password Reset Email Sent", {
+        description: data.message, // Display the message from the API
+        duration: 6000,
+      });
+
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      toast.error("Error", {
+        description: error instanceof Error ? error.message : "Could not send reset link.",
+      });
+    } finally {
+      setForgotPasswordLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -249,88 +275,29 @@ export default function ProfileModal({
               </div>
             </div>
 
-           {/* Password Section */}
-            <div className="mt-6 pt-6 border-t border-slate-200">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-5">
-                <h4 className="flex items-center font-medium text-gray-800 mb-1">
-                  <Shield className="h-4 w-4 mr-2 text-primary-600" />
-                  Change Password
-                </h4>
-                <p className="text-xs text-gray-500">Leave blank if you don't want to change your password</p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                    <Key className="h-4 w-4 mr-2 text-primary-600" />
-                    Current Password
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showCurrentPassword ? "text" : "password"}
-                      name="currentPassword"
-                      value={profileData.currentPassword}
-                      onChange={handleProfileChange}
-                      className="text-black border-slate-200 bg-slate-50 pr-10 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary-600"
-                    >
-                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                    <Key className="h-4 w-4 mr-2 text-primary-600" />
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showNewPassword ? "text" : "password"}
-                      name="newPassword"
-                      value={profileData.newPassword}
-                      onChange={handleProfileChange}
-                      className="text-black border-slate-200 bg-slate-50 pr-10 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary-600"
-                    >
-                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                    <Key className="h-4 w-4 mr-2 text-primary-600" />
-                    Confirm New Password
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      name="confirmPassword"
-                      value={profileData.confirmPassword}
-                      onChange={handleProfileChange}
-                      className="text-black border-slate-200 bg-slate-50 pr-10 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary-600"
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
+      {/* Password Section */}
+      <div className="mt-6 pt-6 border-t border-slate-200">
+               <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-3">
+                 <h4 className="flex items-center font-medium text-gray-800 mb-1">
+                   Password Management
+                 </h4>
+                 <p className="text-xs text-gray-500">Need to reset your password?</p>
+               </div>
+               <Button
+                 variant="outline"
+                 onClick={handleForgotPassword}
+                 disabled={forgotPasswordLoading}
+                 className="w-full border-primary-300 text-primary-600 hover:bg-primary-50"
+               >
+                 {forgotPasswordLoading ? (
+                   <>
+                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...
+                   </>
+                 ) : (
+                   'Send Password Reset Link'
+                 )}
+               </Button>
             </div>
-
             {/* Cancel or Save */}
             <div className="mt-8 flex items-center justify-between">
               <Button
@@ -342,9 +309,14 @@ export default function ProfileModal({
               </Button>
               <Button
                 onClick={handleSaveChanges}
-                className="bg-secondary-600 hover:bg-secondary-700 transition-all shadow-lg shadow-secondary-500/20 group"
+                disabled={profileUpdateLoading || uploading || forgotPasswordLoading} // Disable if any action is loading
+                className="bg-secondary-600 hover:bg-secondary-700 ..."
               >
-                <Save className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
+                {profileUpdateLoading ? (
+                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                     <Save className="mr-2 h-4 w-4 ..." />
+                )}
                 Save Changes
               </Button>
             </div>
