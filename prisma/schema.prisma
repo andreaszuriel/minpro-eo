@@ -165,7 +165,7 @@ model Event {
   organizer     User          @relation("OrganizerEvents", fields: [organizerId], references: [id])
   reviews       Review[]
   transactions  Transaction[]
-  tickets       Ticket[]      // ➔ New relation to Ticket
+  tickets       Ticket[]      
 
   @@index([organizerId])
   @@index([genreId])

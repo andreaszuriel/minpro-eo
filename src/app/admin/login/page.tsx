@@ -15,43 +15,41 @@ export default function AdminLogin() {
   const [redirecting, setRedirecting] = useState(false);
 
   const handleSubmit = async (formData: FormData) => {
-    setIsLoading(true);
+    setIsLoading(true); 
     setError(null);
 
     try {
-      const response = await signIn("credentials", {
+      const response = await signIn("credentials-signin", { 
         email: formData.get("email") as string,
         password: formData.get("password") as string,
-        redirect: false, 
+        redirect: false,
       });
 
-      setIsLoading(false); 
-
+      // Check the response AFTER the await completes
       if (response?.error) {
+        setIsLoading(false); // Stop loading on error
         // Map common errors to user-friendly messages
         if (response.error === "CredentialsSignin") {
-             setError("Invalid email or password. Please try again.");
+          setError("Invalid email or password. Please try again.");
         } else if (response.error === "AccessDenied") { 
-             setError("Access Denied. You might not have admin privileges.");
+          setError("Access Denied. You do not have admin privileges.");
+        } else {
+          setError(response.error || "Login failed. Please check your credentials or try again later.");
         }
-         else {
-             setError("Login failed. Please check your credentials.");
-        }
-        console.error("SignIn Error:", response.error); 
+        console.error("SignIn Error:", response.error);
       } else if (response?.ok && !response.error) {
-         // Login was successful
-        setRedirecting(true); // Show feedback to the user
+        setError(null); // Clear any previous errors
         window.location.href = '/admin/dashboard';
-
       } else {
-          setError("An unexpected issue occurred during login. Please try again.");
-          console.warn("Unexpected SignIn Response:", response);
+        // Unexpected response structure
+        setIsLoading(false); // Stop loading
+        setError("An unexpected issue occurred during login. Please try again.");
+        console.warn("Unexpected SignIn Response:", response);
       }
     } catch (err: any) {
-      console.error("Catch Block Error:", err);
+      console.error("Catch Block Error (AdminLogin):", err);
       setError("An unexpected error occurred. Please try again.");
       setIsLoading(false); // Ensure loading is stopped on catch
-      setRedirecting(false); // Ensure redirecting is reset
     }
   };
   
@@ -122,25 +120,20 @@ export default function AdminLogin() {
           whileHover={{ scale: isLoading || redirecting ? 1 : 1.05 }}
           whileTap={{ scale: isLoading || redirecting ? 1 : 0.95 }}
         >
-          <Button
-            type="submit"
-            className="w-full bg-primary-600 hover:bg-secondary-700 transition-colors duration-300"
-            disabled={isLoading || redirecting}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing In...
-              </>
-            ) : redirecting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Success! Redirecting...
-              </>
-            ) : (
-              "Access Admin Panel"
-            )}
-          </Button>
+            <Button
+        type="submit"
+        className="w-full bg-primary-600 hover:bg-secondary-700 transition-colors duration-300"
+        disabled={isLoading} // Only disable based on isLoading
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Signing In...
+          </>
+        ) : (
+          "Access Admin Panel"
+        )}
+      </Button>
         </motion.div>
       </form>
     </motion.div>

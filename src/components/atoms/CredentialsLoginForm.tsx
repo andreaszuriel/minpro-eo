@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { signIn } from "next-auth/react"; 
+import { useRouter } from "next/navigation"; 
+import { handleCredentialsLogin } from "@/lib/actions"; 
 
 interface CredentialsLoginFormProps {
   setError: (error: string | null) => void;
@@ -16,43 +17,38 @@ interface CredentialsLoginFormProps {
 export function CredentialsLoginForm({ setError, isLoading, setIsLoading }: CredentialsLoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [redirecting, setRedirecting] = useState(false);
-
-  const handleSubmit = async (formData: FormData) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const response = await signIn("credentials", {
-        email: formData.get("email") as string,
-        password: formData.get("password") as string,
-        redirect: false
-      });
-      
-      if (response?.error) {
-        setError(response.error);
-        setIsLoading(false);
-      } else {
-        // Authentication successful
-        setRedirecting(true);
-        
-        // Force a hard navigation to refresh the session
-        window.location.href = "/auth/verify-signin";
-        
-      }
-    } catch (error: any) {
-      console.error("Login error:", error);
-      setError("An unexpected error occurred. Please try again.");
-      setIsLoading(false);
-    }
-  };
+  const router = useRouter(); 
 
   return (
-    <form onSubmit={(e) => {
-      e.preventDefault();
-      const formData = new FormData(e.currentTarget);
-      handleSubmit(formData);
-    }} className="space-y-4">
+    // Use the form's action prop to call the server action
+    <form
+      action={async (formData: FormData) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          // Call the server action
+          const result = await handleCredentialsLogin(formData);
+
+          // Handle the result from the server action
+          if (result?.error) {
+            setError(result.error); // Display validation or auth errors
+          } else if (result?.success && result.redirectUrl) {
+            // If server action indicates success and provides URL, navigate client-side
+            router.push(result.redirectUrl);
+          } else {
+             console.warn("Login successful but no redirect URL provided.");
+             router.push("/auth/verify-signin");
+          }
+        } catch (error: any) {
+          // Catch unexpected errors during server action execution itself
+          console.error("Client-side Login Submit Error:", error);
+          setError("An unexpected error occurred during login.");
+        } finally {
+           if (!router) setIsLoading(false); // Stop loading if not redirecting
+        }
+      }}
+      className="space-y-4"
+    >
       <div className="space-y-2">
         <label
           htmlFor="credentialsEmail"
@@ -62,12 +58,12 @@ export function CredentialsLoginForm({ setError, isLoading, setIsLoading }: Cred
         </label>
         <Input
           id="credentialsEmail"
-          name="email"
+          name="email" 
           type="email"
           placeholder="your@email.com"
           className="w-full text-black"
           required
-          disabled={isLoading || redirecting}
+          disabled={isLoading} // Only disable based on isLoading
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -81,31 +77,26 @@ export function CredentialsLoginForm({ setError, isLoading, setIsLoading }: Cred
         </label>
         <Input
           id="credentialsPassword"
-          name="password"
+          name="password" 
           type="password"
           placeholder="••••••••"
           className="w-full text-black"
           required
-          disabled={isLoading || redirecting}
+          disabled={isLoading} // Only disable based on isLoading
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
       </div>
-      <motion.div whileHover={{ scale: (isLoading || redirecting) ? 1 : 1.05 }} whileTap={{ scale: (isLoading || redirecting) ? 1 : 0.95 }}>
+      <motion.div whileHover={{ scale: isLoading ? 1 : 1.05 }} whileTap={{ scale: isLoading ? 1 : 0.95 }}>
         <Button
           type="submit"
           className="w-full bg-primary-600 hover:bg-secondary-700 transition-colors duration-300"
-          disabled={isLoading || redirecting}
+          disabled={isLoading} // Disable button only when loading
         >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Signing In...
-            </>
-          ) : redirecting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Success! Redirecting...
             </>
           ) : (
             "Sign In with Email"

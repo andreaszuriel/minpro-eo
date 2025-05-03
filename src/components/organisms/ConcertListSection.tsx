@@ -114,12 +114,18 @@ export default function ConcertListSection() {
       aria-labelledby="upcoming-events-heading"
     >
       <div className="container mx-auto">
-        <h2
-          id="upcoming-events-heading"
-          className="mb-12 text-center text-4xl font-bold text-primary-600 md:text-5xl"
-        >
-          UPCOMING EVENTS
-        </h2>
+        <div className="flex items-center justify-center mb-20">
+          <div className="w-full flex flex-col items-center">
+            <div className="border-t-2 border-tertiary-600 w-1/2 mb-4"></div>
+            <h2
+              id="upcoming-events-heading"
+              className="text-center text-4xl font-bold text-primary-600 md:text-5xl"
+            >
+              UPCOMING EVENTS
+            </h2>
+            <div className="border-b-2 border-tertiary-600 w-1/2 mt-4"></div>
+          </div>
+        </div>
 
         {/* Filter Info - Now reflects server-side filtering */}
         {(searchQuery || selectedCountry || selectedGenre) && !isLoading && !error && (
@@ -255,27 +261,38 @@ function ConcertCard({ concert }: { concert: FetchedEventListItem }) {
 
   return (
     <Link
-      href={`/events/${concert.id}`} // Link using the event ID
-      className="h-full"
-      aria-label={`View details for ${concert.title}`}
-    >
-      <div className="group flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-md transition-shadow duration-300 hover:shadow-xl">
-        <div className="relative aspect-[3/2] w-full overflow-hidden">
-          {concert.image ? (
+    href={`/events/${concert.id}`}
+    className="h-full"
+    aria-label={`View details for ${concert.title}`}
+  >
+    <div className="group flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-md transition-shadow duration-300 hover:shadow-xl">
+      <div className="relative aspect-[3/2] w-full overflow-hidden">
+        {concert.image ? (
+            <Image
+              src={concert.image}
+              alt={concert.title}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              loading="lazy"
+              placeholder="blur"
+              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMSAxIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSIjZTVlN2ViIi8+Cjwvc3ZnPg=="
+              onError={(e) => {
+                e.currentTarget.src = "https://i.pinimg.com/1200x/2a/86/a5/2a86a560f0559704310d98fc32bd3d32.jpg";
+              }}
+            />
+        ) : (
+            <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
               <Image
-                src={concert.image} // Use fetched image URL
-                alt={concert.title}
+                src="https://i.pinimg.com/1200x/2a/86/a5/2a86a560f0559704310d98fc32bd3d32.jpg"
+                alt="Concert placeholder"
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                // Optional: Add placeholder / error handling
-                // loading="lazy" // Lazy load images below the fold
+                className="object-cover"
+                loading="lazy"
               />
-          ) : (
-              <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-400">
-                  No Image
-              </div>
-          )}
+            </div>
+        )}
 
 
           {/* Date badge */}

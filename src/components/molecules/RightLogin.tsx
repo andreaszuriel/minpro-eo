@@ -1,11 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { MagicLinkForm } from "@/components/atoms/MagicLinkForm";
 import { CredentialsLoginForm } from "@/components/atoms/CredentialsLoginForm";
 import { GoogleAuthForm } from "@/components/atoms/GoogleAuthForm";
+import { SignupForm } from "@/components/atoms/SignupForm"; 
 import { useState } from "react";
 
 interface AuthPanelProps {
@@ -24,6 +24,13 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
     transition: { duration: 0.3 },
   };
 
+  const handleTabChange = (tab: string) => {
+    if (!isLoading) { // Prevent switching tabs while an action is in progress
+      setError(null); // Clear error when switching tabs
+      setActiveTab(tab);
+    }
+  };
+
   return (
     <motion.div
       className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full"
@@ -34,16 +41,16 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
       <Tabs
         defaultValue="login"
         value={activeTab}
-        onValueChange={setActiveTab}
+        // Use the handler to clear errors on tab change
+        onValueChange={handleTabChange}
         className="w-full"
       >
-        {/* Hidden TabsList used for programmatic control */}
+        {/* Hidden TabsList */}
         <TabsList className="hidden">
           <TabsTrigger value="login">Log In</TabsTrigger>
           <TabsTrigger value="signup">Sign Up</TabsTrigger>
         </TabsList>
 
-        {/* AnimatePresence handles transitions between login/signup tabs */}
         <AnimatePresence mode="wait">
           {/* --- Login Tab --- */}
           {activeTab === "login" && (
@@ -53,15 +60,17 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   Log In
                 </h2>
 
-                {/* Display error message if present */}
                 {error && (
                   <p className="text-red-500 text-center text-sm bg-red-100 p-2 rounded">{error}</p>
                 )}
 
-                {/* Credentials Login Form */}
-                <CredentialsLoginForm setError={setError} isLoading={isLoading} setIsLoading={setIsLoading} />
+                {/* Pass down state setters */}
+                <CredentialsLoginForm
+                  setError={setError}
+                  isLoading={isLoading}
+                  setIsLoading={setIsLoading}
+                />
 
-                {/* Separator */}
                 <div className="relative flex items-center justify-center">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t"></span>
@@ -71,18 +80,14 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   </span>
                 </div>
 
-                {/* Magic Link Form */}
                 <MagicLinkForm />
-
-                {/* Google Sign In */}
                 <GoogleAuthForm />
 
-                {/* Switch to Signup */}
                 <p className="text-center text-sm text-black">
                   New here?{" "}
                   <button
                     type="button"
-                    onClick={() => !isLoading && setActiveTab("signup")}
+                    onClick={() => handleTabChange("signup")} // Use handler
                     className="text-primary-600 hover:text-secondary-500 font-medium transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={isLoading}
                   >
@@ -101,155 +106,17 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   Sign Up
                 </h2>
 
-                {/* Display error message if present */}
                 {error && (
                   <p className="text-red-500 text-center text-sm bg-red-100 p-2 rounded">{error}</p>
                 )}
 
-                {/* Signup Form */}
-                <form action={async (formData: FormData) => {
-                  setIsLoading(true);
-                  setError(null);
-                  try {
-                    const result = await (await import("@/lib/actions").then(m => m.handleSignup))(formData);
-                    if (result?.error) {
-                      setError(result.error);
-                    }
-                  } catch (err) {
-                    console.error("Client-side Signup Submit Error:", err);
-                    setError("An unexpected error occurred during signup.");
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="firstName"
-                        className="text-sm font-medium text-black"
-                      >
-                        First Name
-                      </label>
-                      <input
-                        id="firstName"
-                        name="firstName"
-                        placeholder="John"
-                        className="w-full text-black border-gray-300 rounded-md p-2"
-                        required
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="lastName"
-                        className="text-sm font-medium text-black"
-                      >
-                        Last Name
-                      </label>
-                      <input
-                        id="lastName"
-                        name="lastName"
-                        placeholder="Doe"
-                        className="w-full text-black border-gray-300 rounded-md p-2"
-                        required
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
+                 <SignupForm
+                   setError={setError}
+                   isLoading={isLoading}
+                   setIsLoading={setIsLoading}
+                 />
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="signupEmail"
-                      className="text-sm font-medium text-black"
-                    >
-                      Email
-                    </label>
-                    <input
-                      id="signupEmail"
-                      name="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      className="w-full text-black border-gray-300 rounded-md p-2"
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="signupPassword"
-                      className="text-sm font-medium text-black"
-                    >
-                      Password
-                    </label>
-                    <input
-                      id="signupPassword"
-                      name="password"
-                      type="password"
-                      placeholder="••••••••"
-                      className="w-full text-black border-gray-300 rounded-md p-2"
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="confirmPassword"
-                      className="text-sm font-medium text-black"
-                    >
-                      Confirm Password
-                    </label>
-                    <input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      className="w-full text-black border-gray-300 rounded-md p-2"
-                      required
-                      disabled={isLoading}
-                    />
-
-<div className="space-y-2">
-  <label
-    htmlFor="referrerCode"
-    className="text-sm font-medium text-black"
-  >
-    Referral Code (optional)
-  </label>
-  <input
-    id="referrerCode"
-    name="referrerCode"
-    type="text"
-    placeholder="Enter referral code"
-    className="w-full text-black border-gray-300 rounded-md p-2"
-    disabled={isLoading}
-  />
-</div>
-                  </div>
-
-                  <motion.div whileHover={{ scale: isLoading ? 1 : 1.03 }} whileTap={{ scale: isLoading ? 1 : 0.97 }}>
-                    <Button
-                      type="submit"
-                      className="w-full bg-primary-600 hover:bg-secondary-700 transition-colors duration-300"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <>
-                          <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          Signing Up...
-                        </>
-                      ) : (
-                        "Sign Up"
-                      )}
-                    </Button>
-                  </motion.div>
-                </form>
-
-                {/* Separator */}
                 <div className="relative flex items-center justify-center">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t"></span>
@@ -267,12 +134,11 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   and have read the Privacy Policy.
                 </p>
 
-                {/* Switch to Login */}
                 <p className="text-center text-sm text-black">
                   Already have an account?{" "}
                   <button
                     type="button"
-                    onClick={() => !isLoading && setActiveTab("login")}
+                    onClick={() => handleTabChange("login")} // Use handler
                     className="text-primary-600 hover:text-secondary-500 font-medium transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={isLoading}
                   >

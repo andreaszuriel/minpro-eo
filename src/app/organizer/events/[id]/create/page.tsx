@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatISO } from "date-fns";
 import { Toaster, toast } from 'sonner';
+import { eventFormSchema, EventFormData, ticketTierSchema } from "@/lib/validation/event.schema"; // Import the schema
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Controller, useFieldArray } from "react-hook-form";
 import {
   Calendar,
   Clock,
@@ -21,7 +24,8 @@ import {
   Trash2,
   Upload,
   Loader2,
-  X
+  X,
+  AlertCircle
 } from "lucide-react";
 import {
   Select,
@@ -29,7 +33,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"; 
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface TicketTier {
   name: string;
@@ -42,33 +55,36 @@ export default function CreateEventPage({ params }: { params: Promise<{ id: stri
   const organizerId = resolvedParams.id;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [genres, setGenres] = useState<{id: number, name: string}[]>([]);
-const [countries, setCountries] = useState<{id: number, name: string, code: string}[]>([]);
-const [dataLoading, setDataLoading] = useState(true);
-  const [form, setForm] = useState({
-    title: "",
-    artist: "",
-    genreName: "",
-    countryCode: "", 
-    startDate: "",
-    endDate: "",
-    location: "",
-    seats: 0,
-    description: "",
-    image: "",
-  });
-
-  const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([
-    { name: "General", price: 0 }
-  ]);
-  
-  const [loading, setLoading] = useState(false);
+  const [countries, setCountries] = useState<{id: number, name: string, code: string}[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-  };
+  // Initialize form with react-hook-form and zod validation
+  const form = useForm<EventFormData>({
+    resolver: zodResolver(eventFormSchema),
+    defaultValues: {
+      title: "",
+      artist: "",
+      genreName: "",
+      countryCode: "",
+      startDate: "",
+      endDate: "",
+      location: "",
+      seats: 0,
+      description: "",
+      image: "",
+      organizerId: organizerId,
+      tiers: [{ name: "General", price: 0 }]
+    }
+  });
+
+  // Use field array for dynamic ticket tiers
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "tiers"
+  });
 
   const handleImageUploadClick = () => {
     // Trigger file input click
@@ -116,7 +132,7 @@ const [dataLoading, setDataLoading] = useState(true);
       const data = await response.json();
       
       // Update form with cloudinary URL
-      setForm(prev => ({ ...prev, image: data.url }));
+      form.setValue("image", data.url);
       toast.success("Image uploaded successfully");
       
     } catch (error) {
@@ -134,107 +150,31 @@ const [dataLoading, setDataLoading] = useState(true);
 
   const clearImage = () => {
     setImagePreview(null);
-    setForm(prev => ({ ...prev, image: "" }));
+    form.setValue("image", "");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const handleTicketTierChange = (index: number, field: keyof TicketTier, value: string) => {
-    const updatedTiers = [...ticketTiers];
-    if (field === 'price') {
-      updatedTiers[index][field] = parseInt(value) || 0;
-    } else {
-      updatedTiers[index][field] = value as string;
-    }
-    setTicketTiers(updatedTiers);
-  };
-
   const addTicketTier = () => {
-    setTicketTiers([...ticketTiers, { name: "", price: 0 }]);
+    append({ name: "", price: 0 });
   };
 
-  const removeTicketTier = (index: number) => {
-    if (ticketTiers.length > 1) {
-      const updatedTiers = [...ticketTiers];
-      updatedTiers.splice(index, 1);
-      setTicketTiers(updatedTiers);
-    } else {
-      toast.error("You need at least one ticket tier");
-    }
-  };
-
-  const validateForm = () => {
-    // Basic validation
-    if (
-      !form.title.trim() ||
-      !form.genreName.trim() ||
-      !form.startDate ||
-      !form.endDate ||
-      !form.location.trim() ||
-      !form.seats
-    ) {
-      toast.error("Missing required fields", {
-        description: "Please fill in all required fields to continue.",
-      });
-      return false;
-    }
-
-    // Validate dates
-    const start = new Date(form.startDate);
-    const end = new Date(form.endDate);
-    
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      toast.error("Invalid dates", {
-        description: "Please select valid start and end dates/times.",
-      });
-      return false;
-    }
-
-    if (start >= end) {
-      toast.error("Date range error", {
-        description: "End date must be after start date.",
-      });
-      return false;
-    }
-
-    // Validate ticket tiers
-    if (ticketTiers.some(tier => !tier.name.trim())) {
-      toast.error("Invalid ticket tiers", {
-        description: "All ticket tiers must have a name.",
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
+  const onSubmit = async (data: EventFormData) => {
     setLoading(true);
 
     try {
-      const start = new Date(form.startDate);
-      const end = new Date(form.endDate);
+      const start = new Date(data.startDate);
+      const end = new Date(data.endDate);
       const payload = {
-        title: form.title,
-        artist: form.artist,
-        genreName: form.genreName,     
-        countryCode: form.countryCode, 
-        location: form.location,
-        seats: Number(form.seats),
-        description: form.description,
-        image: form.image,
-        organizerId: organizerId,     
+        ...data,
         startDate: formatISO(start),
         endDate: formatISO(end),
-        tiers: ticketTiers,            
-        price: ticketTiers,          
-        
+        seats: Number(data.seats),
+        price: data.tiers, // Keep price for backward compatibility
       };
 
-      console.log("Sending Payload:", JSON.stringify(payload, null, 2)); // Log before sending
+      console.log("Sending Payload:", JSON.stringify(payload, null, 2));
 
       const res = await fetch("/api/events", {
         method: "POST",
@@ -246,16 +186,16 @@ const [dataLoading, setDataLoading] = useState(true);
         // Try parsing JSON error first for better messages
         let errorDescription = "Please check details and try again.";
         try {
-            const errorData = await res.json();
-            console.error("Failed to create event - Server Response:", errorData);
-            if (errorData.error) {
-                errorDescription = errorData.error;
-            }
+          const errorData = await res.json();
+          console.error("Failed to create event - Server Response:", errorData);
+          if (errorData.error) {
+            errorDescription = errorData.error;
+          }
         } catch (parseError) {
-            // If response is not JSON, use text
-            const errorText = await res.text();
-            console.error("Failed to create event - Server Response (Non-JSON):", errorText);
-            errorDescription = errorText.substring(0, 100); 
+          // If response is not JSON, use text
+          const errorText = await res.text();
+          console.error("Failed to create event - Server Response (Non-JSON):", errorText);
+          errorDescription = errorText.substring(0, 100); 
         }
         toast.error("Failed to create event", {
           description: errorDescription,
@@ -295,13 +235,11 @@ const [dataLoading, setDataLoading] = useState(true);
         const countriesResponse = await fetch('/api/countries');
         if (countriesResponse.ok) {
           const countriesData = await countriesResponse.json();
-         
           setCountries(countriesData);
-        
         } else {
            console.error("Failed to fetch countries");
            toast.error("Failed to load countries");
-           setCountries([]); // Set to empty array on failure
+           setCountries([]); 
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -315,6 +253,9 @@ const [dataLoading, setDataLoading] = useState(true);
 
     fetchData();
   }, []);
+
+  // Check if there are any form errors
+  const formErrors = Object.keys(form.formState.errors).length > 0;
 
   return (
     <>
@@ -333,323 +274,419 @@ const [dataLoading, setDataLoading] = useState(true);
           </div>
           
           <div className="p-6">
-            {/* Basic Info */}
-            <div className="space-y-5">
-              <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                  <Tag className="h-4 w-4 mr-2 text-primary-600" />
-                  Event Title
-                </label>
-                <Input 
-                  name="title" 
-                  placeholder="e.g. Summer Music Festival 2025" 
-                  value={form.title} 
-                  onChange={handleChange} 
-                  className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              
-              <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                  <Users className="h-4 w-4 mr-2 text-primary-600" />
-                  Artist/Performer
-                </label>
-                <Input 
-                  name="artist" 
-                  placeholder="e.g. Taylor Swift, Various Artists" 
-                  value={form.artist} 
-                  onChange={handleChange} 
-                  className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>  
+            {/* Form errors summary */}
+            {formErrors && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Please correct the errors below before submitting the form.
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {/* --- Genre Select --- */}
-          <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                  <Music className="h-4 w-4 mr-2 text-primary-600" />
-                  Genre
-                </label>
-                <Select
-                  value={form.genreName}
-                  onValueChange={(value) => setForm(prev => ({ ...prev, genreName: value }))}
-                  disabled={dataLoading} // Disable while loading
-                >
-                  <SelectTrigger className="w-full text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500">
-                    <SelectValue placeholder={dataLoading ? "Loading genres..." : "Select a genre"} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border border-slate-200 shadow-md">
-                    {!dataLoading && genres.length === 0 && (
-                      <SelectItem value="no-genres" disabled className="text-slate-500">
-                        No genres found
-                      </SelectItem>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                {/* Basic Info */}
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center text-sm font-medium text-gray-700">
+                        <Tag className="h-4 w-4 mr-2 text-primary-600" />
+                        Event Title
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="e.g. Summer Music Festival 2025" 
+                          className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="artist"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center text-sm font-medium text-gray-700">
+                        <Users className="h-4 w-4 mr-2 text-primary-600" />
+                        Artist/Performer
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="e.g. Taylor Swift, Various Artists" 
+                          className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="genreName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center text-sm font-medium text-gray-700">
+                        <Music className="h-4 w-4 mr-2 text-primary-600" />
+                        Genre
+                      </FormLabel>
+                      <Select 
+                        disabled={dataLoading}
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500">
+                            <SelectValue placeholder={dataLoading ? "Loading genres..." : "Select a genre"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-white border border-slate-200 shadow-md">
+                          {!dataLoading && genres.length === 0 && (
+                            <SelectItem value="no-genres" disabled className="text-slate-500">
+                              No genres found
+                            </SelectItem>
+                          )}
+                          {genres.map((genre) => (
+                            <SelectItem
+                              key={genre.id}
+                              value={genre.name}
+                              className="text-slate-800 focus:bg-slate-100 focus:text-slate-900 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+                            >
+                              {genre.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center text-sm font-medium text-gray-700">
+                          <Calendar className="h-4 w-4 mr-2 text-primary-600" />
+                          Start Date & Time
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="datetime-local" 
+                            className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
+                  />
                   
-                    {genres.map((genre) => (
-                      <SelectItem
-                        key={genre.id}
-                        value={genre.name}
-                        className="text-slate-800 focus:bg-slate-100 focus:text-slate-900 hover:bg-slate-100 hover:text-slate-900 cursor-pointer" // Add text, focus, hover styles
-                      >
-                        {genre.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-           
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                    <Calendar className="h-4 w-4 mr-2 text-primary-600" />
-                    Start Date & Time
-                  </label>
-                  <Input 
-                    type="datetime-local" 
-                    name="startDate" 
-                    value={form.startDate} 
-                    onChange={handleChange} 
-                    className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center text-sm font-medium text-gray-700">
+                          <Clock className="h-4 w-4 mr-2 text-primary-600" />
+                          End Date & Time
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="datetime-local" 
+                            className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
                 
-                <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                    <Clock className="h-4 w-4 mr-2 text-primary-600" />
-                    End Date & Time
-                  </label>
-                  <Input 
-                    type="datetime-local" 
-                    name="endDate" 
-                    value={form.endDate} 
-                    onChange={handleChange} 
-                    className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center text-sm font-medium text-gray-700">
+                          <MapPin className="h-4 w-4 mr-2 text-primary-600" />
+                          Location
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g. Madison Square Garden, New York" 
+                            className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div>
-    <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-      <MapPin className="h-4 w-4 mr-2 text-primary-600" />
-      Location
-    </label>
-    <Input 
-      name="location" 
-      placeholder="e.g. Madison Square Garden, New York" 
-      value={form.location} 
-      onChange={handleChange} 
-      className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
-    />
-  </div>
-  
-       {/* --- Country Select --- */}
-       <div>
-                  <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                    <MapPin className="h-4 w-4 mr-2 text-primary-600" />
-                    Country
-                  </label>
-                  <Select
-                    value={form.countryCode}
-                    onValueChange={(value) => setForm(prev => ({ ...prev, countryCode: value }))}
-                    disabled={dataLoading} // Disable while loading
-                  >
-                    <SelectTrigger className="w-full text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500">
-                      <SelectValue placeholder={dataLoading ? "Loading countries..." : "Select a country"} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-slate-200 shadow-md">                   
-                       {!dataLoading && countries.length === 0 && (
-                         <SelectItem value="no-countries" disabled className="text-slate-500">
-                           No countries found
-                         </SelectItem>
-                       )}        
-                       {countries.map((country) => (
-                        <SelectItem
-                          key={country.id}
-                          value={country.code}
-                          className="text-slate-800 focus:bg-slate-100 focus:text-slate-900 hover:bg-slate-100 hover:text-slate-900 cursor-pointer" // Add text, focus, hover styles
+                  
+                  <FormField
+                    control={form.control}
+                    name="countryCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center text-sm font-medium text-gray-700">
+                          <MapPin className="h-4 w-4 mr-2 text-primary-600" />
+                          Country
+                        </FormLabel>
+                        <Select 
+                          disabled={dataLoading}
+                          onValueChange={field.onChange} 
+                          value={field.value}
                         >
-                          {country.name} ({country.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                  <Users className="h-4 w-4 mr-2 text-primary-600" />
-                  Total Seats
-                </label>
-                <Input 
-                  type="number" 
-                  name="seats" 
-                  placeholder="e.g. 500" 
-                  value={form.seats} 
-                  onChange={handleChange} 
-                  className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              
-              {/* Image Upload Component */}
-              <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                  <FileImage className="h-4 w-4 mr-2 text-primary-600" />
-                  Event Image
-                </label>
-                
-                {/* Hidden file input */}
-                <input 
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
-                
-                {/* Custom upload button */}
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-slate-300 rounded-lg">
-                  <div className="space-y-2 text-center">
-                    <FileImage className="mx-auto h-12 w-12 text-slate-400" />
-                    <div className="flex text-sm text-slate-600">
-                      <Button
-                        type="button"
-                        onClick={handleImageUploadClick}
-                        variant="secondary"
-                        className="mx-auto"
-                        disabled={uploadingImage}
-                      >
-                        {uploadingImage ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload Event Image
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-slate-500">PNG, JPG, GIF up to 5MB</p>
-                  </div>
+                          <FormControl>
+                            <SelectTrigger className="w-full text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500">
+                              <SelectValue placeholder={dataLoading ? "Loading countries..." : "Select a country"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-white border border-slate-200 shadow-md">                   
+                            {!dataLoading && countries.length === 0 && (
+                              <SelectItem value="no-countries" disabled className="text-slate-500">
+                                No countries found
+                              </SelectItem>
+                            )}        
+                            {countries.map((country) => (
+                              <SelectItem
+                                key={country.id}
+                                value={country.code}
+                                className="text-slate-800 focus:bg-slate-100 focus:text-slate-900 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+                              >
+                                {country.name} ({country.code})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
                 
-                {/* Image Preview */}
-                {imagePreview && (
-                  <div className="mt-3 p-2 border border-slate-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-medium text-gray-600">Image Preview:</p>
-                      <Button 
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearImage}
-                        className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="relative h-40 w-full bg-slate-100 rounded overflow-hidden">
-                      <img 
-                        src={imagePreview} 
-                        alt="Event preview" 
-                        className="h-full w-full object-cover"
-                        onError={() => setImagePreview(null)}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                  <Info className="h-4 w-4 mr-2 text-primary-600" />
-                  Event Description
-                </label>
-                <Textarea 
-                  name="description" 
-                  placeholder="Describe your event..." 
-                  value={form.description} 
-                  onChange={handleChange} 
-                  rows={4}
-                  className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                <FormField
+                  control={form.control}
+                  name="seats"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center text-sm font-medium text-gray-700">
+                        <Users className="h-4 w-4 mr-2 text-primary-600" />
+                        Total Seats
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="e.g. 500" 
+                          className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </div>
-            
-            {/* Ticket Tiers Section */}
-            <div className="mt-8 pt-6 border-t border-slate-200">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-5">
-                <h4 className="flex items-center font-medium text-gray-800 mb-1">
-                  <Tag className="h-4 w-4 mr-2 text-primary-600" />
-                  Ticket Tiers
-                </h4>
-                <p className="text-xs text-gray-500">Add different ticket types with their prices</p>
-              </div>
-              
-              {ticketTiers.map((tier, index) => (
-                <div key={index} className="mb-4 p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
-                  <div className="flex justify-between items-center mb-2">
-                    <h5 className="text-sm font-medium text-gray-700">Ticket Tier {index + 1}</h5>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeTicketTier(index)}
-                      className="text-red-500 hover:text-red-700 p-1 h-auto"
-                      disabled={ticketTiers.length === 1}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                
+                {/* Image Upload Component */}
+                <div>
+                  <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                    <FileImage className="h-4 w-4 mr-2 text-primary-600" />
+                    Event Image
+                  </label>
+                  
+                  {/* Hidden file input */}
+                  <input 
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  
+                  {/* Custom upload button */}
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-slate-300 rounded-lg">
+                    <div className="space-y-2 text-center">
+                      <FileImage className="mx-auto h-12 w-12 text-slate-400" />
+                      <div className="flex text-sm text-slate-600">
+                        <Button
+                          type="button"
+                          onClick={handleImageUploadClick}
+                          variant="secondary"
+                          className="mx-auto"
+                          disabled={uploadingImage}
+                        >
+                          {uploadingImage ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="mr-2 h-4 w-4" />
+                              Upload Event Image
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-slate-500">PNG, JPG, GIF up to 5MB</p>
+                    </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Tier Name</label>
-                      <Input
-                        value={tier.name}
-                        onChange={(e) => handleTicketTierChange(index, 'name', e.target.value)}
-                        placeholder="e.g. VIP, General Admission"
-                        className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
-                      />
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="mt-3 p-2 border border-slate-200 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-medium text-gray-600">Image Preview:</p>
+                        <Button 
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearImage}
+                          className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="relative h-40 w-full bg-slate-100 rounded overflow-hidden">
+                        <img 
+                          src={imagePreview} 
+                          alt="Event preview" 
+                          className="h-full w-full object-cover"
+                          onError={() => setImagePreview(null)}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Price</label>
-                      <Input
-                        type="number"
-                        value={tier.price}
-                        onChange={(e) => handleTicketTierChange(index, 'price', e.target.value)}
-                        placeholder="0"
-                        className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
-              ))}
-              
-              <Button
-                variant="outline"
-                onClick={addTicketTier}
-                className="mt-2 w-full bg-slate-50 border-dashed border-slate-300 text-primary-600 hover:bg-slate-100 hover:text-primary-700"
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add Another Ticket Tier
-              </Button>
-            </div>
-            
-            {/* Create Event Button */}
-            <div className="mt-8">
-              <Button 
-                onClick={handleSubmit} 
-                disabled={loading} 
-                className="w-full bg-secondary-600 hover:bg-secondary-700 transition-all shadow-lg shadow-secondary-500/20 group py-6"
-              >
-                <Save className="mr-2 h-5 w-5 transition-transform group-hover:scale-110" />
-                {loading ? "Creating Event..." : "Create Event"}
-              </Button>
-            </div>
+                
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center text-sm font-medium text-gray-700">
+                        <Info className="h-4 w-4 mr-2 text-primary-600" />
+                        Event Description
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Describe your event..." 
+                          rows={4}
+                          className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Ticket Tiers Section */}
+                <div className="mt-8 pt-6 border-t border-slate-200">
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-5">
+                    <h4 className="flex items-center font-medium text-gray-800 mb-1">
+                      <Tag className="h-4 w-4 mr-2 text-primary-600" />
+                      Ticket Tiers
+                    </h4>
+                    <p className="text-xs text-gray-500">Add different ticket types with their prices</p>
+                  </div>
+                  
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="mb-4 p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                      <div className="flex justify-between items-center mb-2">
+                        <h5 className="text-sm font-medium text-gray-700">Ticket Tier {index + 1}</h5>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => fields.length > 1 && remove(index)}
+                          className="text-red-500 hover:text-red-700 p-1 h-auto"
+                          disabled={fields.length === 1}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name={`tiers.${index}.name`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs font-medium text-gray-600">Tier Name</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g. VIP, General Admission"
+                                  className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name={`tiers.${index}.price`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs font-medium text-gray-600">Price</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  className="text-black border-slate-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addTicketTier}
+                    className="mt-2 w-full bg-slate-50 border-dashed border-slate-300 text-primary-600 hover:bg-slate-100 hover:text-primary-700"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Another Ticket Tier
+                  </Button>
+                </div>
+                
+                {/* Create Event Button */}
+                <div className="mt-8">
+                  <Button 
+                    type="submit"
+                    disabled={loading} 
+                    className="w-full bg-secondary-600 hover:bg-secondary-700 transition-all shadow-lg shadow-secondary-500/20 group py-6"
+                  >
+                    <Save className="mr-2 h-5 w-5 transition-transform group-hover:scale-110" />
+                    {loading ? "Creating Event..." : "Create Event"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </div>
         </div>
       </div>

@@ -1,21 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function VerifySignIn() {
-  const [countdown, setCountdown] = useState(5);
-  const router = useRouter();
+  const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          router.push("/");
+          window.location.href = "/";
           return 0;
         }
         return prev - 1;
@@ -23,7 +21,12 @@ export default function VerifySignIn() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [router]);
+  }, []);
+
+  // Function to handle immediate navigation with force refresh
+  const handleGoHome = () => {
+    window.location.href = "/";
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-indigo-50 to-blue-50 p-4">
@@ -69,7 +72,7 @@ export default function VerifySignIn() {
         >
           <Button
             className="px-6 py-2 bg-primary-600 text-white rounded-full hover:bg-secondary-700 transition-colors duration-300"
-            onClick={() => router.push("/")}
+            onClick={handleGoHome}
           >
             Go to Home Now
           </Button>
