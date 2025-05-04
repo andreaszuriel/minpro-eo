@@ -8,64 +8,67 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ============================================================================
+// USER RELATED MODELS
+// ============================================================================
+
 model User {
-  id                String            @id @default(cuid())
+  id                String              @id @default(cuid())
   name              String?
-  email             String            @unique
+  email             String              @unique
   password          String?
   referredBy        String?
-  points            Int               @default(0)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  role              UserRole          @default(customer)
-  isAdmin           Boolean           @default(false)
+  points            Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  role              UserRole            @default(customer)
+  isAdmin           Boolean             @default(false)
   emailVerified     DateTime?
   image             String?
-  referralCode      String?           @unique
+  referralCode      String?             @unique
 
+  // Authentication related
   accounts          Account[]
   authenticators    Authenticator[]
-  coupons           Coupon[]
-  events            Event[]           @relation("OrganizerEvents")
-  pointTransactions PointTransaction[]
-  reviews           Review[]
   sessions          Session[]
+  passwordResetTokens PasswordResetToken[]
+  
+  // Event and transaction related
+  events            Event[]             @relation("OrganizerEvents")
+  tickets           Ticket[]
   transactions      Transaction[]
-  tickets           Ticket[]         
-  passwordResetTokens PasswordResetToken[] 
+  reviews           Review[]
+  
+  // Promotion and points related
+  coupons           Coupon[]
+  promotions        Promotion[]
+  pointTransactions PointTransaction[]
 
   @@index([email])
 }
 
 model PointTransaction {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   points      Int
   description String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   expiresAt   DateTime
-  isExpired   Boolean  @default(false)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isExpired   Boolean   @default(false)
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
 }
 
-model PasswordResetToken {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique 
-  expires   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([token]) 
-}
+// ============================================================================
+// AUTHENTICATION RELATED MODELS
+// ============================================================================
 
 model Account {
+  id                String    @id @default(cuid())
   userId            String
   type              String
   provider          String
@@ -77,38 +80,42 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  id                String   @id @default(cuid())
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
 }
 
 model Session {
-  sessionToken String   @unique
+  id           String    @id @default(cuid())
+  sessionToken String    @unique
   userId       String
   expires      DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  id           String   @id @default(cuid())
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  // Relations
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
 model VerificationToken {
+  id         String    @id @default(cuid())
   identifier String
-  token      String   @unique
+  token      String    @unique
   expires    DateTime
-  id         String   @id @default(cuid())
 
   @@unique([identifier, token])
 }
 
 model Authenticator {
-  credentialID         String   @unique
+  id                   String    @id @default(cuid())
+  credentialID         String    @unique
   userId               String
   providerAccountId    String
   credentialPublicKey  String
@@ -116,30 +123,33 @@ model Authenticator {
   credentialDeviceType String
   credentialBackedUp   Boolean
   transports           String?
-  createdAt            DateTime @default(now())
-  id                   String   @id @default(cuid())
-  updatedAt            DateTime @updatedAt
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  // Relations
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
-model Country {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique
-  code      String    @unique
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique 
+  expires   DateTime
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  events    Event[]
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token]) 
 }
 
-model Genre {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  events    Event[]
-}
+// ============================================================================
+// EVENT RELATED MODELS
+// ============================================================================
 
 model Event {
   id            Int           @id @default(autoincrement())
@@ -156,61 +166,99 @@ model Event {
   description   String?
   organizerId   String
   averageRating Float?
+  price         Json
+  featured      Boolean       @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  price         Json
 
+  // Relations
   genre         Genre         @relation(fields: [genreId], references: [id])
   country       Country       @relation(fields: [countryId], references: [id])
   organizer     User          @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  
+  // Related items
   reviews       Review[]
   transactions  Transaction[]
-  tickets       Ticket[]      
+  tickets       Ticket[]
+  promotions    Promotion[]
 
   @@index([organizerId])
   @@index([genreId])
   @@index([countryId])
 }
 
+model Country {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  code      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  // Relations
+  events    Event[]
+}
+
+model Genre {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  // Relations
+  events    Event[]
+}
+
+// ============================================================================
+// TRANSACTION RELATED MODELS
+// ============================================================================
+
 model Transaction {
   id              Int               @id @default(autoincrement())
   userId          String
   eventId         Int
   ticketQuantity  Int
-  finalPrice      Int
-  paymentProof    String?
-  createdAt       DateTime          @default(now())
   basePrice       Int
+  finalPrice      Int
   couponDiscount  Int               @default(0)
-  paymentDeadline DateTime
   pointsUsed      Int               @default(0)
-  ticketUrl       String?
   tierType        String
+  paymentProof    String?
+  ticketUrl       String?
   voucherUrl      String?
   status          TransactionStatus @default(PENDING)
+  paymentDeadline DateTime
+  createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+  promotionId     String?
+  couponId        Int?    
 
+  // Relations
   event           Event             @relation(fields: [eventId], references: [id])
   user            User              @relation(fields: [userId], references: [id])
-  tickets         Ticket[]          // ➔ New relation to Ticket
+  tickets         Ticket[]
+  promotion       Promotion?        @relation(fields: [promotionId], references: [id])
+  coupon          Coupon?           @relation(fields: [couponId], references: [id])
 
   @@index([userId])
   @@index([eventId])
+  @@index([promotionId])
+  @@index([couponId])
 }
 
 model Ticket {
-  id             String   @id @default(cuid())
-  serialCode     String   @unique
+  id             String    @id @default(cuid())
+  serialCode     String    @unique
   userId         String
   eventId        Int
   transactionId  Int
   tierType       String
-  isUsed         Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isUsed         Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  user           User        @relation(fields: [userId], references: [id])
-  event          Event       @relation(fields: [eventId], references: [id])
+  // Relations
+  user           User      @relation(fields: [userId], references: [id])
+  event          Event     @relation(fields: [eventId], references: [id])
   transaction    Transaction @relation(fields: [transactionId], references: [id])
 
   @@index([userId])
@@ -219,36 +267,75 @@ model Ticket {
 }
 
 model Review {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    String
   eventId   Int
   rating    Int
   comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  event     Event    @relation(fields: [eventId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  // Relations
+  event     Event     @relation(fields: [eventId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 
   @@unique([userId, eventId])
   @@index([userId])
   @@index([eventId])
 }
 
+// ============================================================================
+// PROMOTION RELATED MODELS
+// ============================================================================
+
 model Coupon {
-  id         Int      @id @default(autoincrement())
-  code       String   @unique
+  id         Int       @id @default(autoincrement())
+  code       String    @unique
   userId     String
   discount   Int
+  discountType DiscountType @default(FIXED_AMOUNT) 
   expiresAt  DateTime
-  isReferral Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isReferral Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isUsed     Boolean   @default(false) 
 
-  user       User     @relation(fields: [userId], references: [id])
+  // Relations
+  user       User      @relation(fields: [userId], references: [id])
+  transactions Transaction[]
 
   @@index([userId])
+  @@index([userId, isUsed, expiresAt]) 
 }
+
+model Promotion {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  eventId       Int
+  organizerId   String
+  discount      Int           // Percentage or fixed amount discount
+  startDate     DateTime
+  endDate       DateTime
+  usageLimit    Int?          // Optional max number of times promotion can be used
+  usageCount    Int           @default(0)
+  isActive      Boolean       @default(true)
+  description   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  event         Event         @relation(fields: [eventId], references: [id])
+  organizer     User          @relation(fields: [organizerId], references: [id])
+  transactions  Transaction[]
+
+  @@index([eventId])
+  @@index([organizerId])
+  @@index([code])
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
 
 enum UserRole {
   customer
@@ -261,4 +348,9 @@ enum TransactionStatus {
   PAID
   EXPIRED
   CANCELED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
 }
