@@ -25,12 +25,11 @@ import { useEffect, useState } from "react";
 import OrganizerManagement from "@/components/admin/ManageOrganizers";
 import GenreManagement from "@/components/admin/ManageGenres";
 import CountryManagement from "@/components/admin/ManageCountries";
-// Import the EventManagement component
-import EventManagement from "@/components/admin/EventManagement"; // Adjust path if needed
+import EventManagement from "@/components/admin/EventManagement"; 
 
-// ... (Keep StatCard, QuickActionButton, NavItem components as they are) ...
 
-interface StatCardProps { // Keep this interface
+
+interface StatCardProps { 
   icon: LucideIcon;
   title: string;
   value: string;
@@ -38,7 +37,7 @@ interface StatCardProps { // Keep this interface
   color: string;
 }
 
-function StatCard({ icon, title, value, trend, color }: StatCardProps) { // Keep this component
+function StatCard({ icon, title, value, trend, color }: StatCardProps) { 
   const Icon = icon;
   const bgColorClass = `bg-${color}-50`;
   const iconColorClass = `text-${color}-600`;
@@ -62,7 +61,7 @@ function StatCard({ icon, title, value, trend, color }: StatCardProps) { // Keep
   );
 }
 
-interface QuickActionButtonProps { // Keep this interface
+interface QuickActionButtonProps { 
   icon: LucideIcon;
   label: string;
   onClick: () => void;
@@ -84,14 +83,14 @@ function QuickActionButton({ icon, label, onClick, color = "primary" }: QuickAct
   );
 }
 
-interface NavItemProps { // Keep this interface
+interface NavItemProps { 
   icon: LucideIcon;
   label: string;
   active: boolean;
   onClick: () => void;
 }
 
-function NavItem({ icon, label, active, onClick }: NavItemProps) { // Keep this component
+function NavItem({ icon, label, active, onClick }: NavItemProps) {
   const Icon = icon;
 
   return (
@@ -152,7 +151,6 @@ export default function AdminDashboard() {
 
   // --- Loading State ---
   if (status === "loading") {
-    // ... (loading state remains the same) ...
      return (
        <div className="flex items-center justify-center h-screen bg-slate-50">
          <div className="text-center">
@@ -166,7 +164,6 @@ export default function AdminDashboard() {
 
   // --- Unauthorized State ---
   if (status === "unauthenticated" || (status === "authenticated" && !isAdmin)) {
-    // ... (unauthorized state remains the same) ...
      return (
        <motion.div
          className="flex flex-col items-center justify-center h-screen bg-red-50 p-6 text-center"
@@ -215,7 +212,6 @@ export default function AdminDashboard() {
 
   // --- Authorized Admin View ---
   if (!session) {
-    // ... (session not found state remains the same) ...
      return (
        <div className="flex items-center justify-center h-screen bg-slate-50">
          <p>Error: Session not found despite being authenticated.</p>
@@ -233,7 +229,6 @@ export default function AdminDashboard() {
       <div className="flex flex-col lg:flex-row">
         {/* Sidebar Navigation */}
         <div className="lg:w-64 bg-white border-r border-gray-200 lg:min-h-screen p-5">
-          {/* ... (Sidebar header and profile remain the same) ... */}
            <div className="flex items-center space-x-3 mb-8">
              <div className="bg-primary-600 rounded-lg p-2">
                <Settings className="h-6 w-6 text-white" />
@@ -345,7 +340,6 @@ export default function AdminDashboard() {
 
           {/* Stats Overview */}
           {activeTab === "overview" && (
-            // ... (Stats Overview remains the same) ...
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
                <StatCard icon={Calendar} title="Total Events" value="128" trend={5.2} color="primary" />
                <StatCard icon={Users} title="Registered Users" value="2,845" trend={12.8} color="secondary" />
@@ -356,7 +350,6 @@ export default function AdminDashboard() {
 
           {/* Quick Actions */}
           {activeTab === "overview" && (
-            // ... (Quick Actions remains the same) ...
              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-8">
                <h3 className="text-gray-800 font-medium text-lg mb-4">Quick Actions</h3>
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -372,7 +365,6 @@ export default function AdminDashboard() {
           {activeTab === "organizers" && <OrganizerManagement />}
           {activeTab === "genres" && <GenreManagement />}
           {activeTab === "countries" && <CountryManagement />}
-          {/* Render EventManagement when activeTab is 'events' */}
           {activeTab === "events" && <EventManagement />}
 
           {/* Placeholder for User Management tab */}
@@ -398,7 +390,6 @@ export default function AdminDashboard() {
           )}
 
           {/* Footer */}
-          {/* ... (Footer remains the same) ... */}
            <div className="mt-auto pt-8">
              <div className="bg-white p-4 rounded-xl border border-gray-200 text-center text-sm text-gray-500">
                © {new Date().getFullYear()} Event Management Portal • Admin Version 2.0

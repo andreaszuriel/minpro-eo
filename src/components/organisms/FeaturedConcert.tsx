@@ -4,12 +4,11 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Calendar, ArrowUpRight, Star, Loader2, AlertTriangle } from "lucide-react";
-// REMOVE: import { ConcertEvent, concertList } from "../data/concertlist"; // Removed static import
 import { motion } from "framer-motion";
 import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-// Define the type based on the /api/featured-concerts response
+// Define the type 
 interface FeaturedConcertData {
   id: number;
   title: string;
@@ -66,8 +65,8 @@ export default function FeaturedConcertsSection() {
     if (featuredConcerts.length <= 1) return; // Don't rotate if 0 or 1 concert
 
     const interval = setInterval(() => {
-      setActiveIndex((current) => (current + 1) % featuredConcerts.length);
-    }, 5000);
+      setActiveIndex((current) => (current + 10) % featuredConcerts.length);
+    }, 15000);
     return () => clearInterval(interval); // Cleanup interval on unmount
   }, [featuredConcerts.length]); // Rerun if the number of concerts changes
 
@@ -113,7 +112,7 @@ export default function FeaturedConcertsSection() {
     <section className="relative overflow-hidden bg-slate-200 py-16 md:py-24">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-5">
-        {/* SVG pattern remains the same */}
+        {/* SVG pattern */}
          <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
            <defs>
              <pattern id="grid" width="8" height="8" patternUnits="userSpaceOnUse">
@@ -127,7 +126,7 @@ export default function FeaturedConcertsSection() {
       <div className="container relative mx-auto px-4">
         {/* Section Header */}
         <div className="mb-12 flex flex-col items-center md:mb-16">
-          {/* Header content remains the same */}
+          {/* Header content */}
            <motion.div
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
@@ -157,7 +156,7 @@ export default function FeaturedConcertsSection() {
             <div className="md:col-span-3">
               <FeaturedMainCard
                 concert={featuredConcerts[activeIndex]}
-                isActive={true} // Assuming the main card is always considered active for animation
+                isActive={true}
               />
             </div>
           )}
@@ -220,7 +219,6 @@ function FeaturedMainCard({ concert, isActive }: FeaturedMainCardProps) {
   return (
     <motion.div
       // Animation key ensures remount on concert change if needed,
-      // or adjust animation logic based on `isActive` if preferred
       key={concert.id}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -248,14 +246,14 @@ function FeaturedMainCard({ concert, isActive }: FeaturedMainCardProps) {
 
       {/* Content */}
       <Link
-        href={`/concerts/${concert.id}`} // Link using fetched ID
+        href={`/events/${concert.id}`} // Link using fetched ID
         className="relative flex h-full min-h-[400px] flex-col justify-end p-6 md:p-8"
       >
         <div className="mb-2 rounded-full bg-tertiary-500 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-black w-fit">
           {genreList} {/* Use fetched genre */}
         </div>
 
-        <h3 className="mb-1 text-2xl font-bold text-white md:text-3xl">
+        <h3 className="mb-1 text-2xl font-bold text-white hover:text-tertiary-400 md:text-3xl">
           {concert.title} {/* Use fetched title */}
         </h3>
 
