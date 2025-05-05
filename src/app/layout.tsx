@@ -7,6 +7,7 @@ import ClientProviders from '../components/atoms/ClientProviders';
 import { SessionProvider } from 'next-auth/react';
 import { Toaster } from '@/components/ui/sonner';
 import NavigationLoader from '../components/atoms/NavigationLoader';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -43,6 +44,9 @@ export default function RootLayout({
             <Toaster />
           </ClientProviders>
         </SessionProvider>
+
+        {/* Vercel Speed Insights */}
+        <SpeedInsights />
       </body>
     </html>
   );
