@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   Calendar, Clock, MapPin, ChevronUp, ChevronDown,
-  Search, Plus, Edit, Trash, AlertCircle, Eye, Star, StarHalf, Tag
+  Search, Plus, Edit, Trash, AlertCircle, Eye, Star, StarHalf, Tag,
+  UserCircle
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -29,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 import CouponManagementModal from "./CouponManagementModal";
+import AttendeeListModal from "./AttendeeListModal";
 import type { Event as PrismaEvent, Genre, Country } from '@prisma/client'
 
 type ExtendedEvent = Omit<PrismaEvent, 'genreId' | 'countryId'> & {
@@ -49,6 +51,7 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
+  const [isAttendeeModalOpen, setIsAttendeeModalOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [selectedEventTitle, setSelectedEventTitle] = useState<string>("");
 
@@ -109,6 +112,16 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
       setSelectedEventId(eventId);
       setSelectedEventTitle(event.title);
       setIsCouponModalOpen(true);
+    }
+  };
+
+  const openAttendeeListModal = (eventId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      setSelectedEventId(eventId);
+      setSelectedEventTitle(event.title);
+      setIsAttendeeModalOpen(true);
     }
   };
 
@@ -319,6 +332,16 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                               <Eye className="mr-2 h-4 w-4" />
                               View Event
                             </Button>
+
+                            <Button
+  variant="outline"
+  className="cursor-pointer w-full bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 justify-start"
+  onClick={() => openAttendeeListModal(event.id)}
+>
+  <UserCircle className="mr-2 h-4 w-4" />
+  Attendee List
+</Button>
+
                             <Button
                               variant="outline"
                               className="cursor-pointer w-full bg-primary-50 border-primary-300 text-primary-700 hover:bg-primary-100 justify-start"
@@ -386,6 +409,13 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
         eventId={selectedEventId}
         eventTitle={selectedEventTitle}
       />
+      {/* Attendee List Modal */}
+<AttendeeListModal
+  isOpen={isAttendeeModalOpen}
+  onClose={() => setIsAttendeeModalOpen(false)}
+  eventId={selectedEventId}
+  eventTitle={selectedEventTitle}
+/>
     </>
   );
 }
