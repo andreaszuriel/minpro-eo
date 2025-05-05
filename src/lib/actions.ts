@@ -220,7 +220,8 @@ export async function handleSignup(formData: FormData) {
                 data: {
                     userId: newUser.id,
                     code: `REFERRED-${newUserReferralCode}`,
-                    discount: 20000,
+                    discount: 20,
+                    discountType: 'PERCENTAGE',
                     expiresAt: couponExpiryDate,
                     isReferral: true,
                 },

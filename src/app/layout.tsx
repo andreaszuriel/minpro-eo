@@ -6,6 +6,7 @@ import Footer from '../components/molecules/footer.module';
 import ClientProviders from '../components/atoms/ClientProviders';
 import { SessionProvider } from 'next-auth/react';
 import { Toaster } from '@/components/ui/sonner';
+import NavigationLoader from '../components/atoms/NavigationLoader';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -36,6 +37,8 @@ export default function RootLayout({
             <Navbar />
             <main>{children}</main>
             <Footer />
+            {/* Navigation loading indicator */}
+            <NavigationLoader />
             {/* Sonner toaster */}
             <Toaster />
           </ClientProviders>
