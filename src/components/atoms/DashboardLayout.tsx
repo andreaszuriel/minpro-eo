@@ -5,20 +5,23 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ProfileModal from '@/components/atoms/ProfileModal';
-import { Eye, EyeOff, Copy, Loader2, BadgeAlert, Ticket, Star, CalendarClock } from 'lucide-react'; // Added icons
-import Link from 'next/link';
+import { Eye, EyeOff, Copy, Loader2, BadgeAlert, Ticket, Star, CalendarClock } from 'lucide-react'; 
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 // Define types for points and coupons data
 interface PointsData {
-  totalPoints: number;
+  currentBalance: number; 
   nextExpiration?: string | null; 
 }
 
 interface CouponData {
   id: number; 
   code: string;
+  discount: number;
+  discountType: string;
   expiresAt: string; 
+  isReferral: boolean;
 }
 
 interface DashboardLayoutProps {
@@ -291,8 +294,8 @@ export default function DashboardLayout({ user, tabs, renderTabContent, actionBu
                 <div className="flex items-center gap-2 text-sm text-gray-700">
                   <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                   <span className="font-medium">Points:</span>
-                  <span className="font-semibold">{(user.pointsData?.totalPoints ?? 0).toLocaleString()}</span>
-                  {user.pointsData?.nextExpiration && user.pointsData?.totalPoints > 0 && (
+                  <span className="font-semibold">{(user.pointsData?.currentBalance ?? 0).toLocaleString()}</span>
+                  {user.pointsData?.nextExpiration && user.pointsData?.currentBalance > 0 && (
                     <span className="ml-auto text-xs text-gray-500 flex items-center gap-1 whitespace-nowrap">
                        <CalendarClock className="w-3 h-3" />
                        <span>Exp: {format(new Date(user.pointsData.nextExpiration), 'MMM d, yyyy')}</span>

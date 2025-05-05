@@ -314,6 +314,7 @@ model Promotion {
   eventId       Int
   organizerId   String
   discount      Int           // Percentage or fixed amount discount
+  discountType  DiscountType  @default(PERCENTAGE)
   startDate     DateTime
   endDate       DateTime
   usageLimit    Int?          // Optional max number of times promotion can be used

@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   Calendar, Clock, MapPin, ChevronUp, ChevronDown,
-  Search, Plus, Edit, Trash, AlertCircle,
-  Eye, Star, StarHalf 
+  Search, Plus, Edit, Trash, AlertCircle, Eye, Star, StarHalf, Tag
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -27,18 +26,17 @@ import {
   AlertDialogCancel,
   AlertDialogAction
 } from "@/components/ui/alert-dialog";
-import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
+import CouponManagementModal from "./CouponManagementModal";
 import type { Event as PrismaEvent, Genre, Country } from '@prisma/client'
 
-// --- Define ExtendedEvent Type  ---
 type ExtendedEvent = Omit<PrismaEvent, 'genreId' | 'countryId'> & {
   genre: Genre;
   country: Country;
   soldSeats: number;
   totalRevenue: number;
   averageRating: number | null;
-  // Add any other properties derived in OrganizerDashboard's processEvents
 };
 
 function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
@@ -50,27 +48,26 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [selectedEventTitle, setSelectedEventTitle] = useState<string>("");
 
-  //  Function to handle view
   const handleView = (eventId: number, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation(); // Prevent toggling expand/collapse when clicking hover button
+    if (e) e.stopPropagation();
     router.push(`/events/${eventId}`);
   };
 
-  // Function to handle edit
   const handleEdit = (eventId: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     router.push(`/organizer/events/edit/${eventId}`);
   };
 
-  // Function to open delete confirmation
   const openDeleteDialog = (eventId: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setEventToDelete(eventId);
     setIsDeleting(true);
   };
 
-  // Function to handle delete confirmation
   const handleDelete = async () => {
     if (!eventToDelete) return;
 
@@ -100,13 +97,21 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
     }
   };
 
-  // Function to cancel delete
   const cancelDelete = () => {
     setIsDeleting(false);
     setEventToDelete(null);
   };
 
-  // Filtered and Searched Events
+  const openCouponModal = (eventId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      setSelectedEventId(eventId);
+      setSelectedEventTitle(event.title);
+      setIsCouponModalOpen(true);
+    }
+  };
+
   const filteredEvents = events
     .filter(event => {
       const now = new Date();
@@ -119,15 +124,14 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
       return true;
     })
     .filter(event => {
-        const lowerSearchTerm = searchTerm.toLowerCase();
-        const genreName = event.genre?.name?.toLowerCase() ?? '';
-        return (
-            event.title.toLowerCase().includes(lowerSearchTerm) ||
-            event.location.toLowerCase().includes(lowerSearchTerm) ||
-            genreName.includes(lowerSearchTerm)
-        );
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      const genreName = event.genre?.name?.toLowerCase() ?? '';
+      return (
+        event.title.toLowerCase().includes(lowerSearchTerm) ||
+        event.location.toLowerCase().includes(lowerSearchTerm) ||
+        genreName.includes(lowerSearchTerm)
+      );
     });
-
 
   return (
     <>
@@ -167,7 +171,7 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
         </CardHeader>
         <CardContent>
           {filteredEvents.length === 0 ? (
-             <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center">
+            <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center">
               <Calendar className="mb-2 h-10 w-10 text-gray-400" />
               <h3 className="mb-1 text-lg font-medium">
                 {initialEvents.length === 0 ? "No Events Found" : "No Matching Events"}
@@ -177,82 +181,73 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                   ? "You haven't created any events yet."
                   : "Try adjusting your search or filters."}
               </p>
-
               {initialEvents.length === 0 && (
-                 <Button
-                    className="bg-secondary-600 hover:bg-secondary-700"
-                    onClick={() => router.push(`/organizer/events/create`)}
-                 >
-                   <Plus className="mr-2 h-4 w-4" />Create Your First Event
-                 </Button>
+                <Button
+                  className="bg-secondary-600 hover:bg-secondary-700"
+                  onClick={() => router.push(`/organizer/events/create`)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />Create Your First Event
+                </Button>
               )}
             </div>
           ) : (
             <div className="space-y-4">
               {filteredEvents.map(event => (
                 <div key={event.id} className="overflow-hidden rounded-lg border border-gray-200 group">
-                  {/* Collapsible Row */}
                   <div
                     className="flex cursor-pointer items-center justify-between bg-white p-4 hover:bg-slate-100 relative"
                     onClick={() => setExpandedEventId(expandedEventId === event.id ? null : event.id)}
                   >
-                    {/* Left side: Image, Title, Details */}
                     <div className="flex items-center flex-1 min-w-0 mr-4">
-                        <div className="relative mr-4 h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
-                            {event.image ?
-                            <Image src={event.image} alt={event.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" /> :
-                            <Calendar className="h-full w-full bg-gray-200 p-4 text-gray-400" />
-                            }
+                      <div className="relative mr-4 h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
+                        {event.image ?
+                          <Image src={event.image} alt={event.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" /> :
+                          <Calendar className="h-full w-full bg-gray-200 p-4 text-gray-400" />
+                        }
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-primary-700 font-medium truncate">{event.title}</h3>
+                        <div className="flex items-center my-1">
+                          {event.averageRating ? (
+                            <>
+                              <div className="flex items-center text-yellow-500">
+                                {[...Array(5)].map((_, i) => {
+                                  const rating = event.averageRating || 0;
+                                  if (i < Math.floor(rating)) {
+                                    return <Star key={i} className="h-3.5 w-3.5 fill-current" />;
+                                  } else if (i === Math.floor(rating) && rating % 1 >= 0.5) {
+                                    return <StarHalf key={i} className="h-3.5 w-3.5 fill-current" />;
+                                  } else {
+                                    return <Star key={i} className="h-3.5 w-3.5 text-gray-300" />;
+                                  }
+                                })}
+                              </div>
+                              <span className="ml-1.5 text-xs font-medium text-gray-700">
+                                {event.averageRating.toFixed(1)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-500">No ratings yet</span>
+                          )}
                         </div>
-                        <div className="min-w-0">
-                            <h3 className="text-primary-700 font-medium truncate">{event.title}</h3>
-                            <div className="flex items-center my-1">
-                                {event.averageRating ? (
-                                    <>
-                                        <div className="flex items-center text-yellow-500">
-                                            {[...Array(5)].map((_, i) => {
-                                                const rating = event.averageRating || 0;
-                                                if (i < Math.floor(rating)) {
-                                                    return <Star key={i} className="h-3.5 w-3.5 fill-current" />;
-                                                } else if (i === Math.floor(rating) && rating % 1 >= 0.5) {
-                                                    return <StarHalf key={i} className="h-3.5 w-3.5 fill-current" />;
-                                                } else {
-                                                    return <Star key={i} className="h-3.5 w-3.5 text-gray-300" />;
-                                                }
-                                            })}
-                                        </div>
-                                        <span className="ml-1.5 text-xs font-medium text-gray-700">
-                                            {event.averageRating.toFixed(1)}
-                                        </span>
-                                    </>
-                                ) : (
-                                    <span className="text-xs text-gray-500">No ratings yet</span>
-                                )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                            <div className="flex items-center"><Calendar className="mr-1 h-3 w-3" />{format(new Date(event.startDate), 'MMM d, yyyy')}</div>
-                            <div className="flex items-center"><Clock className="mr-1 h-3 w-3" />{format(new Date(event.startDate), 'h:mm a')}</div>
-                            <div className="flex items-center truncate"><MapPin className="mr-1 h-3 w-3 flex-shrink-0" />{event.location}</div>
-                            </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                          <div className="flex items-center"><Calendar className="mr-1 h-3 w-3" />{format(new Date(event.startDate), 'MMM d, yyyy')}</div>
+                          <div className="flex items-center"><Clock className="mr-1 h-3 w-3" />{format(new Date(event.startDate), 'h:mm a')}</div>
+                          <div className="flex items-center truncate"><MapPin className="mr-1 h-3 w-3 flex-shrink-0" />{event.location}</div>
                         </div>
+                      </div>
                     </div>
-
-
-                    {/* Right side: Actions, Stats, Chevron */}
                     <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                      {/* Action buttons that appear on hover */}
                       <div className="cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
-                        {/* --- View Button (Hover) --- */}
                         <Button
                           variant="ghost"
                           size="sm"
                           className="cursor-pointer h-8 w-8 p-0"
-                          onClick={(e) => handleView(event.id, e)} // Pass 'e' to stop propagation
+                          onClick={(e) => handleView(event.id, e)}
                           aria-label={`View ${event.title}`}
                         >
                           <Eye className="cursor-pointer h-4 w-4 text-blue-600" />
                         </Button>
-              
                         <Button
                           variant="ghost"
                           size="sm"
@@ -267,19 +262,15 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                           size="sm"
                           className="cursor-pointer h-8 w-8 p-0"
                           onClick={(e) => openDeleteDialog(event.id, e)}
-                           aria-label={`Delete ${event.title}`}
+                          aria-label={`Delete ${event.title}`}
                         >
                           <Trash className="cursor-pointer h-4 w-4 text-red-600" />
                         </Button>
                       </div>
-
-                      {/* Stats */}
                       <div className="text-right hidden sm:block">
                         <div className="font-medium text-primary-600">{formatCurrency(event.totalRevenue || 0, 'IDR')}</div>
                         <div className="text-xs text-gray-500">{event.soldSeats || 0}/{event.seats} tickets</div>
                       </div>
-
-                      {/* Chevron and Text */}
                       <div className="flex items-center">
                         <span className="text-xs text-primary-600 mr-1 hidden md:inline group-hover:inline transition-all">
                           {expandedEventId === event.id ? "Hide" : "Details"}
@@ -291,12 +282,9 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                       </div>
                     </div>
                   </div>
-
-                  {/* Expanded Content */}
                   {expandedEventId === event.id && (
                     <div className="border-t border-gray-200 bg-gray-50 p-4">
                       <div className="grid gap-4 md:grid-cols-3">
-                        {/* Column 1: Event Details */}
                         <div className="space-y-2">
                           <h4 className="font-medium text-primary-700">Event Details</h4>
                           <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-sm">
@@ -307,7 +295,6 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                             <span className="text-gray-500">Capacity:</span><span className="font-medium text-black">{event.seats} seats</span>
                           </div>
                         </div>
-                        {/* Column 2: Sales Summary */}
                         <div className="space-y-2">
                           <h4 className="font-medium text-primary-700">Sales Summary</h4>
                           <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1 text-sm">
@@ -316,27 +303,22 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                             <span className="text-gray-500">Revenue:</span><span className="font-medium text-black">{formatCurrency(event.totalRevenue || 0, 'IDR')}</span>
                             <span className="text-gray-500">Avg Rating:</span><span className="font-medium text-black">{event.averageRating ? `${event.averageRating.toFixed(1)} / 5.0` : 'N/A'}</span>
                           </div>
-                           {/* Stats for smaller screens (visible when expanded) */}
-                           <div className="text-left block sm:hidden mt-2">
-                             <div className="text-sm font-medium text-primary-600">{formatCurrency(event.totalRevenue || 0, 'IDR')} Revenue</div>
-                             <div className="text-xs text-gray-500">{event.soldSeats || 0}/{event.seats} tickets sold</div>
-                           </div>
+                          <div className="text-left block sm:hidden mt-2">
+                            <div className="text-sm font-medium text-primary-600">{formatCurrency(event.totalRevenue || 0, 'IDR')} Revenue</div>
+                            <div className="text-xs text-gray-500">{event.soldSeats || 0}/{event.seats} tickets sold</div>
+                          </div>
                         </div>
-
-                        {/* Column 3: Actions */}
                         <div className="space-y-2">
                           <h4 className="font-medium text-primary-700">Actions</h4>
                           <div className="flex flex-col space-y-2">
-                            {/* --- View Button (Expanded) --- */}
-                             <Button
+                            <Button
                               variant="outline"
-                              className="cursor-pointer w-full bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 justify-start" // Blue theme
-                              onClick={() => handleView(event.id)} 
+                              className="cursor-pointer w-full bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 justify-start"
+                              onClick={() => handleView(event.id)}
                             >
                               <Eye className="mr-2 h-4 w-4" />
                               View Event
                             </Button>
-                          
                             <Button
                               variant="outline"
                               className="cursor-pointer w-full bg-primary-50 border-primary-300 text-primary-700 hover:bg-primary-100 justify-start"
@@ -344,6 +326,14 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
                             >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Event
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="cursor-pointer w-full bg-green-50 border-green-300 text-green-700 hover:bg-green-100 justify-start"
+                              onClick={() => openCouponModal(event.id)}
+                            >
+                              <Tag className="mr-2 h-4 w-4" />
+                              Coupon Management
                             </Button>
                             <Button
                               variant="outline"
@@ -365,7 +355,6 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -389,6 +378,14 @@ function EventsTab({ events: initialEvents }: { events: ExtendedEvent[] }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Coupon Management Modal */}
+      <CouponManagementModal
+        isOpen={isCouponModalOpen}
+        onClose={() => setIsCouponModalOpen(false)}
+        eventId={selectedEventId}
+        eventTitle={selectedEventTitle}
+      />
     </>
   );
 }

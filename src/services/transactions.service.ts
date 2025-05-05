@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma, TransactionStatus, PrismaClient, Ticket } from "@prisma/client";
+import { Prisma, TransactionStatus, PrismaClient, Ticket, Coupon, User, PointTransaction } from "@prisma/client";
 import { generateUniqueSerialCode } from "@/lib/utils";
 import { EmailService } from "./email.service"; 
 
@@ -66,6 +66,7 @@ export class TransactionService {
         event: true,
         user: true,
         tickets: true,
+        promotion: true, // Added promotion inclusion
       },
     });
   }
@@ -81,6 +82,7 @@ export class TransactionService {
         event: true,
         user: true,
         tickets: true,
+        promotion: true, // Added promotion inclusion
       },
       orderBy: {
         createdAt: "desc",
@@ -89,83 +91,83 @@ export class TransactionService {
   }
 
   static async createTransaction(data: Prisma.TransactionCreateInput) {
-    return prisma.$transaction(async (tx) => {  
-      // Verify event exists and has enough seats
-      const event = await tx.event.findUnique({
-        where: { id: data.event.connect?.id as number },
-      });
-      
-      if (!event) {
-        throw new Error("Event not found");
-      }
-      
-      // Check if tickets are available
-      const soldTickets = await tx.ticket.count({
-        where: { eventId: event.id }
-      });
-      
-      if (soldTickets + (data.ticketQuantity as number) > event.seats) {
-        throw new Error("Not enough tickets available");
-      }
-   
-      console.log("Transaction data:", JSON.stringify(data));
 
-      // Make sure we're not passing an ID
-      const dataToUse = { ...data };
-      if ((dataToUse as any).id) {
-        delete (dataToUse as any).id;
-      }
-    
-      // Create the transaction
-      const transaction = await tx.transaction.create({
-        data: dataToUse,
-        include: {
-          event: true,
-          user: true,
-        },
-      });
-      
-      // If transaction is already PAID, create tickets immediately
-      if (transaction.status === "PAID") {
-        await this.createTicketsForTransaction(transaction.id, tx);
-      }
-      
-      // Get the complete transaction with tickets
-      const result = await tx.transaction.findUnique({
-        where: { id: transaction.id },
-        include: {
-          event: true,
-          user: true,
-          tickets: true,
-        },
-      });
+    return prisma.$transaction(async (tx) => {
+        // --- Re-verify event existence and seats within the transaction ---
+        const eventId = (data.event?.connect?.id) as number | undefined;
+        if (!eventId) throw new Error("Event ID missing in transaction data");
 
-      // Send notification email for transaction creation
-      if (result && result.user && result.event) {
-        await EmailService.sendTransactionStatusUpdate(
-          result.user,
-          result.event,
-          result.id,
-          result.status,
-          result.ticketQuantity
-        );
-      }
-      
-      return result;
+        const event = await tx.event.findUnique({ where: { id: eventId } });
+        if (!event) throw new Error("Event not found");
+
+        const ticketQuantity = data.ticketQuantity as number;
+        const soldTickets = await tx.ticket.count({ where: { eventId: event.id } });
+        if (soldTickets + ticketQuantity > event.seats) {
+            throw new Error("Not enough tickets available (concurrent booking check)");
+        }
+        // --- End Re-verification ---
+
+        console.log("Creating Transaction with data:", JSON.stringify(data));
+
+        // Ensure not passing an ID if it accidentally exists in `data`
+        const dataToUse = { ...data };
+        if ((dataToUse as any).id) delete (dataToUse as any).id;
+
+        // Create the transaction
+        const transaction = await tx.transaction.create({
+            data: dataToUse, // Use the prepared data from the API route
+            include: {
+                event: true,
+                user: true, // Include user for email later
+                coupon: true, // Include coupon if connected
+                promotion: true // Include promotion if connected
+            },
+        });
+
+        // If promotion is used, increment its usage count
+        if (transaction.promotionId) {
+            await tx.promotion.update({
+                where: { id: transaction.promotionId },
+                data: { usageCount: { increment: 1 } }
+            });
+            console.log(`Incremented usage count for promotion ${transaction.promotionId}`);
+        }
+
+        // If transaction is created directly as PAID (e.g., free event), create tickets
+        // AND deduct points/mark coupon used immediately.
+        if (transaction.status === TransactionStatus.PAID) {
+             console.log(`Tx #${transaction.id} created as PAID. Handling deductions and tickets.`);
+             await this.handlePaidTransactionSideEffects(transaction.id, tx);
+        }
+
+        // Send notification email for transaction creation
+        if (transaction.user && transaction.event) {
+            await EmailService.sendTransactionStatusUpdate(
+                transaction.user,
+                transaction.event,
+                transaction.id,
+                transaction.status,
+                transaction.ticketQuantity
+            );
+        }
+
+        return transaction; // Return the created transaction object
     });
   }
 
   static async updateTransactionStatus(
     id: number,
-    status: TransactionStatus,
+    newStatus: TransactionStatus,
     updateData: Partial<Prisma.TransactionUpdateInput> = {}
   ) {
-    // --- Step 1: Fetch necessary data BEFORE the transaction ---
+    // Fetch current transaction state *before* starting the DB transaction
     const currentTransaction = await prisma.transaction.findUnique({
       where: { id },
       include: {
-        user: true, // Need user for email
-        event: true, // Need event for email
+        user: true, // Needed for email and point deduction
+        event: true, // Needed for email
+        coupon: true, // Needed for coupon marking
+        promotion: true, // Added promotion inclusion
       }
     });
 
@@ -173,134 +175,205 @@ export class TransactionService {
       throw new Error("Transaction not found");
     }
 
-    // Check if payment deadline has passed (can be done outside tx)
-    if (status === "PAID" &&
-        currentTransaction.paymentDeadline < new Date() &&
-        currentTransaction.status !== "PAID") {
-      throw new Error("Payment deadline has passed");
+    const oldStatus = currentTransaction.status;
+    const statusIsChanging = oldStatus !== newStatus;
+    const isBecomingPaid = newStatus === TransactionStatus.PAID && oldStatus !== TransactionStatus.PAID;
+
+    // Prevent updating status to PAID if deadline passed (unless already PAID)
+    if (isBecomingPaid && currentTransaction.paymentDeadline < new Date()) {
+        console.warn(`Tx #${id}: Attempt to mark as PAID after deadline. Current Status: ${oldStatus}`);
+         await prisma.transaction.update({ where: { id }, data: { status: TransactionStatus.EXPIRED } });
+         throw new Error(`Payment deadline has passed. Transaction automatically marked as EXPIRED.`);
+
     }
 
-    const oldStatus = currentTransaction.status;
-    const statusIsChanging = oldStatus !== status;
+    let createdTickets: Ticket[] = []; // To hold created tickets if status becomes PAID
 
-    // Variables to hold data needed for email after transaction
-    let createdTickets: Ticket[] = []; // To store created tickets if status becomes PAID
-
-    // --- Step 2: Perform database operations within a transaction ---
+    // --- Perform database operations within a transaction ---
     try {
-      await prisma.$transaction(async (tx) => {
-        // Update transaction status and other data
-        await tx.transaction.update({
+      const updatedTransactionResult = await prisma.$transaction(async (tx) => {
+        // 1. Update transaction status and other data
+        const updatedTx = await tx.transaction.update({
           where: { id },
           data: {
             ...updateData,
-            status,
+            status: newStatus, // Apply the new status
           },
-          // No need to include user/event again here unless strictly needed by subsequent steps IN the transaction
+           include: { // Include necessary relations for subsequent steps
+               user: true,
+               coupon: true,
+               promotion: true, // Added promotion inclusion
+           }
         });
 
-        // Handle ticket creation if status becomes PAID
-        if (status === "PAID" && oldStatus !== "PAID") {
-           // Pass the transaction client 'tx' to the creation method
-           createdTickets = await this.createTicketsForTransaction(id, tx);
+        // 2. Handle side effects if status becomes PAID
+        if (isBecomingPaid) {
+             console.log(`Tx #${id} status changing to PAID. Handling deductions and tickets.`);
+             createdTickets = await this.handlePaidTransactionSideEffects(id, tx, updatedTx); // Pass updatedTx
         }
+
+        return updatedTx; // Return the result of the update from the transaction block
       });
       // --- Transaction successful ---
 
+      if (statusIsChanging && currentTransaction.user && currentTransaction.event) {
+          const shouldSendStatusUpdate =
+              (oldStatus === "WAITING_ADMIN" && newStatus === "PAID") ||
+              (oldStatus === "WAITING_ADMIN" && newStatus === "CANCELED") || // Or EXPIRED
+              (oldStatus === "PENDING" && newStatus === "WAITING_ADMIN") ||
+              (oldStatus === "PENDING" && newStatus === "PAID"); // Direct PENDING -> PAID
+
+          if (shouldSendStatusUpdate) {
+              console.log(`Sending status update email for Tx #${id} - New Status: ${newStatus}`);
+              await EmailService.sendTransactionStatusUpdate(
+                  currentTransaction.user,
+                  currentTransaction.event,
+                  currentTransaction.id,
+                  newStatus, // Send the NEW status
+                  currentTransaction.ticketQuantity
+              );
+
+              // If approved (became PAID), also send tickets email
+              if (isBecomingPaid) {
+                  if (createdTickets.length > 0) {
+                       console.log(`Sending tickets email for Tx #${id}`);
+                       await EmailService.sendTickets(
+                          currentTransaction.user.email,
+                          createdTickets,
+                          currentTransaction.event
+                      );
+                  } else {
+                      // Fallback: If createdTickets is empty maybe they existed before? Fetch them.
+                      const existingTickets = await prisma.ticket.findMany({ where: { transactionId: id } });
+                      if (existingTickets.length > 0) {
+                           console.log(`Sending existing tickets email for Tx #${id}`);
+                           await EmailService.sendTickets(currentTransaction.user.email, existingTickets, currentTransaction.event);
+                      } else {
+                           console.warn(`Tx #${id} is PAID but no tickets found/created to send.`);
+                      }
+                  }
+              }
+          }
+      }
+
+      // Return the final state fetched *after* commit if needed, or the result from tx
+      // Fetching again ensures consistency if other processes modified it between commit and fetch
+       const finalUpdatedTransaction = await prisma.transaction.findUnique({
+            where: { id: id },
+            include: { event: true, user: true, tickets: true, coupon: true, promotion: true },
+       });
+       return finalUpdatedTransaction;
+
+
     } catch (error) {
-       console.error("Error during database transaction:", error);
+       console.error(`Error during transaction update or side effects for Tx #${id}:`, error);
        // Re-throw the error to be caught by the API handler
-       throw error;
+       throw error; // This ensures the handleApiRoute catches it
     }
-
-    // --- Step 3: Send emails AFTER the transaction has committed ---
-    let finalUpdatedTransaction; // To store the final state to return
-
-    try {
-        if (statusIsChanging && currentTransaction.user && currentTransaction.event) {
-            const shouldSendStatusUpdate =
-                (oldStatus === "WAITING_ADMIN" && status === "PAID") ||
-                (oldStatus === "WAITING_ADMIN" && status === "CANCELED") ||
-                (oldStatus === "PENDING" && status === "WAITING_ADMIN") ||
-                (oldStatus === "PENDING" && status === "PAID");
-
-            if (shouldSendStatusUpdate) {
-                console.log(`Sending status update email for Tx #${id} - Status: ${status}`);
-                // Use data fetched *before* the transaction
-                await EmailService.sendTransactionStatusUpdate(
-                    currentTransaction.user,
-                    currentTransaction.event,
-                    currentTransaction.id,
-                    status, // Send the NEW status
-                    currentTransaction.ticketQuantity
-                );
-
-                // If approved, also send tickets email
-                if (status === "PAID") {
-                    if (createdTickets.length > 0) {
-                         console.log(`Sending tickets email for Tx #${id}`);
-                         await EmailService.sendTickets(
-                            currentTransaction.user.email,
-                            createdTickets, // Use the tickets returned from createTicketsForTransaction
-                            currentTransaction.event
-                        );
-                    } else {
-                        // If createTickets didn't run or returned empty, fetch existing tickets
-                        const existingTickets = await prisma.ticket.findMany({ where: { transactionId: id } });
-                        if (existingTickets.length > 0) {
-                             console.log(`Sending existing tickets email for Tx #${id}`);
-                             await EmailService.sendTickets(
-                                currentTransaction.user.email,
-                                existingTickets,
-                                currentTransaction.event
-                            );
-                        } else {
-                             console.warn(`Tx #${id} is PAID but no tickets found to send.`);
-                        }
-                    }
-                }
-            }
-        }
-    } catch (emailError) {
-        console.error(`Failed to send email for Tx #${id} after status update:`, emailError);
-    }
-
-
-    // --- Step 4: Fetch the final state to return to the API ---
-    finalUpdatedTransaction = await prisma.transaction.findUnique({
-        where: { id: id },
-        include: {
-            event: true,
-            user: true,
-            tickets: true, // Include tickets in the final result
-        },
-    });
-
-    return finalUpdatedTransaction;
   }
 
+
+  /**
+   * Handles side effects when a transaction becomes PAID:
+   * - Deducts points from user balance.
+   * - Creates a PointTransaction log for the deduction.
+   * - Marks the used coupon as isUsed=true.
+   * - Creates tickets for the transaction.
+   */
+  private static async handlePaidTransactionSideEffects(
+      transactionId: number,
+      txClient: TransactionClient,
+      transaction?: Prisma.TransactionGetPayload<{ include: { user: true, coupon: true, promotion: true } }> // Updated to include promotion
+  ): Promise<Ticket[]> {
+
+      // Fetch transaction details if not passed in (ensure we have pointsUsed, couponId, userId)
+      const txDetails = transaction ?? await txClient.transaction.findUnique({
+          where: { id: transactionId },
+          include: { user: true, coupon: true, promotion: true } // Added promotion inclusion
+      });
+
+      if (!txDetails || !txDetails.user) {
+          throw new Error(`Transaction ${transactionId} or its user not found during PAID processing.`);
+      }
+
+      const { userId, pointsUsed, couponId, coupon, promotionId } = txDetails;
+
+      // --- 1. Deduct Points ---
+      if (pointsUsed > 0) {
+          console.log(`Tx #${transactionId}: Deducting ${pointsUsed} points from user ${userId}`);
+          // Fetch user within TX to lock row and check current points
+          const userBeforeUpdate = await txClient.user.findUnique({ where: { id: userId } });
+          if (!userBeforeUpdate || userBeforeUpdate.points < pointsUsed) {
+               throw new Error(`Insufficient points for user ${userId} at time of confirmation (Needed: ${pointsUsed}, Have: ${userBeforeUpdate?.points ?? 0}). Rolling back.`);
+          }
+
+          // Decrement points on User model
+          await txClient.user.update({
+              where: { id: userId },
+              data: { points: { decrement: pointsUsed } }
+          });
+
+          // Create PointTransaction log for deduction
+          await txClient.pointTransaction.create({
+              data: {
+                  userId: userId,
+                  points: -pointsUsed, // Log deduction as negative value
+                  description: `Points used for transaction #${transactionId}`,
+                  // Points used don't typically expire, but schema requires it. Set far future or null if schema allows.
+                  expiresAt: new Date(new Date().setFullYear(new Date().getFullYear() + 100)), // Or handle differently
+                  isExpired: false, // Default is false
+              }
+          });
+          console.log(`Tx #${transactionId}: Points deducted and log created.`);
+      }
+
+      // --- 2. Mark Coupon Used ---
+      if (couponId && coupon) { // Check if couponId exists and coupon was successfully included
+          console.log(`Tx #${transactionId}: Marking coupon ${couponId} as used for user ${userId}`);
+          // Verify coupon isn't already used (another safety check)
+          if (coupon.isUsed) {
+              // Should ideally not happen if validation was correct at creation and it's linked, but good failsafe.
+               console.warn(`Tx #${transactionId}: Coupon ${couponId} was already marked as used. Proceeding, but check logic.`);
+          }
+          // Update the coupon status
+          await txClient.coupon.update({
+              where: { id: couponId },
+              data: { isUsed: true }
+          });
+          console.log(`Tx #${transactionId}: Coupon ${couponId} marked as used.`);
+      } else if (couponId && !coupon) {
+           console.error(`Tx #${transactionId}: Transaction has couponId ${couponId} but coupon data could not be fetched/linked within transaction. Coupon not marked as used.`);
+           throw new Error(`Coupon data mismatch for Tx #${transactionId}. Rolling back.`);
+      }
+
+      // --- 3. Create Tickets ---
+      console.log(`Tx #${transactionId}: Creating tickets.`);
+      const createdTickets = await this.createTicketsForTransaction(transactionId, txClient); // Already handles existing check
+
+      return createdTickets;
+  }
   private static async createTicketsForTransaction(
     transactionId: number,
-    txClient: TransactionClient
-  ): Promise<Ticket[]> { // Return created tickets
+    txClient: TransactionClient // Ensure it accepts the transaction client
+  ): Promise<Ticket[]> {
     const existingTicketsCount = await txClient.ticket.count({
       where: { transactionId }
     });
 
     if (existingTicketsCount > 0) {
-       console.log(`Tickets already exist for Tx #${transactionId}`);
-      // Return existing tickets if needed, or empty if only new ones matter
-      return txClient.ticket.findMany({ where: { transactionId } });
+       console.log(`Tickets already exist for Tx #${transactionId}. Skipping creation.`);
+       // Return existing tickets
+       return txClient.ticket.findMany({ where: { transactionId } });
     }
 
     const transaction = await txClient.transaction.findUnique({
       where: { id: transactionId },
+      // No includes needed here, just basic data
     });
 
     if (!transaction) {
-      throw new Error(`Transaction ${transactionId} not found during ticket creation`);
+      throw new Error(`Transaction ${transactionId} not found during ticket creation within transaction.`);
     }
-
     if (transaction.ticketQuantity <= 0) {
         console.warn(`Tx #${transactionId} has ticketQuantity <= 0. No tickets created.`);
         return [];
@@ -320,13 +393,9 @@ export class TransactionService {
       data: ticketsToCreateData
     });
 
-    // After createMany, fetch the tickets that were just created to return them
+    // Fetch the tickets that were just created to return them
     const createdTickets = await txClient.ticket.findMany({
-        where: {
-            transactionId: transactionId,
-            // TODO add serialCode filter 
-            // serialCode: { in: ticketsToCreateData.map(t => t.serialCode) }
-        }
+        where: { transactionId: transactionId }
     });
     console.log(`Successfully created and fetched ${createdTickets.length} tickets for Tx #${transactionId}`);
     return createdTickets;

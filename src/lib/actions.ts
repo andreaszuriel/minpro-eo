@@ -233,15 +233,25 @@ export async function handleSignup(formData: FormData) {
         // --- Reward the referrer ---
         if (referrerId) {
             const pointsExpiryDate = getFutureDate(3);
+            
+            // First update the user's points balance directly
+            await prisma.user.update({
+                where: { id: referrerId },
+                data: { 
+                    points: { increment: 10000 } // Add points directly to the user
+                }
+            });
+            
+            // Then create the transaction record
             await prisma.pointTransaction.create({
                 data: {
                     userId: referrerId,
-                    points: 10000,
+                    points: 10000, // Record as positive value
                     description: `Referral bonus for signup: ${newUser.name || newUser.email}`,
                     expiresAt: pointsExpiryDate,
                 },
             });
-            console.log(`SIGNUP: Awarded 10000 points via PointTransaction to referrer ${referrerId.substring(0,8)}..., expires ${pointsExpiryDate.toISOString()}`);
+            console.log(`SIGNUP: Awarded 10000 points to referrer ${referrerId.substring(0,8)}... (updated balance and created PointTransaction), expires ${pointsExpiryDate.toISOString()}`);
         }
 
         // Attempt auto sign-in using the "credentials-signin" provider
