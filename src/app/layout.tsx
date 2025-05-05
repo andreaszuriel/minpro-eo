@@ -30,16 +30,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <head />
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
         <SessionProvider>
           <ClientProviders>
-            <Navbar />
-            <main>{children}</main>
+            {/* Fixed header with proper z-index */}
+            <header className="sticky top-0 z-50 w-full">
+              <Navbar />
+            </header>
+            
+            {/* Main content with flex-grow to push footer down */}
+            <main className="flex-grow">{children}</main>
+            
             <Footer />
+            
             {/* Navigation loading indicator */}
             <NavigationLoader />
+            
             {/* Sonner toaster */}
             <Toaster />
           </ClientProviders>

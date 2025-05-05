@@ -155,7 +155,7 @@ export default function ProfileModal({
 
   return (
     <>
-      <Toaster position="bottom-right" richColors />
+      <Toaster position="top-right" richColors />
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-xl overflow-hidden bg-white shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-5 flex flex-col max-h-[90vh]"> 
         {/* Header */}

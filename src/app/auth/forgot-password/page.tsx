@@ -1,9 +1,12 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { toast, Toaster } from 'sonner';
+import { Loader2, Mail, AlertTriangle, CircleCheck, KeyRound } from 'lucide-react';
 import { z } from "zod";
-import { motion } from "framer-motion";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -18,10 +21,32 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
-export default function ForgotPasswordPage() {
+// Type for validation errors
+type ValidationErrors = {
+  [key: string]: string | string[] | ValidationErrors;
+};
+
+// Helper function to extract error messages
+const extractErrorMessages = (errors: ValidationErrors): string[] => {
+  let messages: string[] = [];
+  
+  Object.entries(errors).forEach(([key, value]) => {
+    if (key === '_errors' && Array.isArray(value)) {
+      messages = [...messages, ...value];
+    } else if (typeof value === 'object' && value !== null) {
+      messages = [...messages, ...extractErrorMessages(value as ValidationErrors)];
+    }
+  });
+  
+  return messages;
+};
+
+function ForgotPasswordContent() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const {
     register,
@@ -34,7 +59,8 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
     setIsLoading(true);
-    setErrorMessage(null);
+    setError(null);
+    setValidationErrors([]);
     
     try {
       const response = await fetch("/api/auth/forgot-password", {
@@ -48,112 +74,202 @@ export default function ForgotPasswordPage() {
       const result = await response.json();
 
       if (!response.ok) {
+        // Handle validation errors separately
+        if (result.errors) {
+          const errorMessages = extractErrorMessages(result.errors);
+          setValidationErrors(errorMessages);
+          toast.error("Validation Error", { 
+              description: errorMessages[0] || "Please check your inputs." 
+          });
+          throw new Error("Validation failed");
+        }
+        
         throw new Error(result.message || "Failed to process your request");
       }
 
       // Show success message
       setSuccess(true);
+      toast.success("Email Sent", { 
+        description: "If an account exists, you'll receive reset instructions." 
+      });
       reset(); // Clear the form
     } catch (error) {
-      console.error("Forgot password error:", error);
-      setErrorMessage(error instanceof Error ? error.message : "An error occurred. Please try again.");
+      // Only set general error if it's not a validation error
+      if (validationErrors.length === 0) {
+        const message = error instanceof Error ? error.message : "An error occurred. Please try again.";
+        setError(message);
+        toast.error("Request Failed", { description: message });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 bg-gray-50">
-      <motion.div
-        className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <h1 className="text-3xl font-display font-bold text-center text-black mb-6">
-          Forgot Password
-        </h1>
+    // Centering container for the page
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 p-4">
+      {/* Card matching modal style */}
+      <div className="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-5">
+        
+        {/* Header Section */}
+        <div className="p-6 border-b border-slate-200 bg-slate-50/50">
+          <h1 className="text-2xl font-bold text-center text-gray-800 flex items-center justify-center">
+            <KeyRound className="w-6 h-6 mr-3 text-primary-600" />
+            Forgot Your Password?
+          </h1>
+          <p className="text-sm text-gray-500 text-center mt-1">
+            Enter your email to receive a password reset link.
+          </p>
+        </div>
 
-        {success ? (
-          <div className="space-y-6">
-            <div className="bg-green-50 border border-green-200 rounded-md p-4 text-green-800">
-              <p className="font-medium">Password reset email sent!</p>
-              <p className="text-sm mt-1">
-                If an account with this email exists, you will receive an email with instructions to reset your password.
-              </p>
+        {/* Form Area */}
+        <div className="p-6 md:p-8">
+          {/* Error Message Styling */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 text-sm flex items-start">
+              <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
+              <span>{error}</span>
             </div>
-            <div className="text-center mt-4">
-              <Link 
-                href="/auth/login" 
-                className="text-primary-600 hover:text-secondary-500 font-medium transition-colors duration-300"
-              >
-                Return to login
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {errorMessage && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-800">
-                <p>{errorMessage}</p>
+          )}
+          
+          {/* Validation Errors Display */}
+          {validationErrors.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-md mb-4 text-sm">
+              <div className="flex items-center mb-1">
+                <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
+                <span className="font-medium">Please fix the following:</span>
               </div>
-            )}
-
-            <div className="space-y-2">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                {...register("email")}
-                className="text-black mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                disabled={isLoading}
-              />
-              {errors.email && (
-                <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
-              )}
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                {validationErrors.map((err, index) => (
+                  <li key={index}>{err}</li>
+                ))}
+              </ul>
             </div>
-
-            <div className="space-y-2">
-              <label htmlFor="confirmEmail" className="block text-sm font-medium text-gray-700">
-                Confirm Email
-              </label>
-              <input
-                id="confirmEmail"
-                type="email"
-                placeholder="Confirm your email"
-                {...register("confirmEmail")}
-                className="text-black mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                disabled={isLoading}
-              />
-              {errors.confirmEmail && (
-                <p className="text-red-500 text-xs mt-1">{errors.confirmEmail.message}</p>
-              )}
+          )}
+          
+          {/* Form Error Messages */}
+          {(errors.email || errors.confirmEmail) && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-md mb-4 text-sm">
+              <div className="flex items-center mb-1">
+                <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
+                <span className="font-medium">Please fix the following:</span>
+              </div>
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                {errors.email && <li>{errors.email.message}</li>}
+                {errors.confirmEmail && <li>{errors.confirmEmail.message}</li>}
+              </ul>
             </div>
+          )}
+          
+          {/* Success Message Styling */}
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4 text-sm flex items-start">
+              <CircleCheck className="h-5 w-5 mr-2 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Password reset email sent!</p>
+                <p className="mt-1">
+                  If an account with this email exists, you will receive instructions to reset your password.
+                </p>
+              </div>
+            </div>
+          )}
 
-            <div>
-              <button
+          {/* Show form only if not yet successful */}
+          {!success ? (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              {/* Email Input */}
+              <div>
+                <label
+                  htmlFor="email"
+                  className="flex items-center text-sm font-medium text-gray-700 mb-1"
+                >
+                  <Mail className="h-4 w-4 mr-2 text-primary-600" />
+                  Email Address
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  {...register("email")}
+                  placeholder="Enter your email"
+                  required
+                  className="w-full text-black border-slate-300 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Confirm Email Input */}
+              <div>
+                <label
+                  htmlFor="confirmEmail"
+                  className="flex items-center text-sm font-medium text-gray-700 mb-1"
+                >
+                  <Mail className="h-4 w-4 mr-2 text-primary-600" />
+                  Confirm Email Address
+                </label>
+                <Input
+                  id="confirmEmail"
+                  type="email"
+                  {...register("confirmEmail")}
+                  placeholder="Confirm your email"
+                  required
+                  className="w-full text-black border-slate-300 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="cursor-pointer w-full bg-secondary-600 hover:bg-secondary-700 text-white transition-all shadow-lg shadow-secondary-500/20 group py-2.5"
               >
-                {isLoading ? "Processing..." : "Send Reset Link"}
-              </button>
-            </div>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                  </>
+                ) : (
+                  'Send Reset Link'
+                )}
+              </Button>
 
-            <div className="text-center mt-4">
-              <Link 
-                href="/auth/login" 
-                className="text-primary-600 hover:text-secondary-500 text-sm font-medium transition-colors duration-300"
+              {/* Back to Login Link */}
+              <div className="text-center mt-2">
+                <Button
+                  variant="link"
+                  onClick={() => router.push('/auth/signin')}
+                  className="text-primary-600 hover:text-primary-800"
+                >
+                  Return to login
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="text-center mt-6">
+              <Button
+                onClick={() => router.push('/auth/signin')}
+                className="bg-primary-600 hover:bg-primary-700 text-white"
               >
-                Back to login
-              </Link>
+                Return to Login
+              </Button>
             </div>
-          </form>
-        )}
-      </motion.div>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+// Main page component using Suspense
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <Loader2 className="h-10 w-10 animate-spin text-primary-600" />
+      </div>
+    }>
+      {/* Toaster for feedback */}
+      <Toaster position="top-right" richColors closeButton />
+      <ForgotPasswordContent />
+    </Suspense>
   );
 }

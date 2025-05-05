@@ -1,12 +1,13 @@
+// src/components/atoms/CredentialsLoginForm.tsx
 "use client";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation"; 
-import { handleCredentialsLogin } from "@/lib/actions"; 
+import { Loader2, Mail, Lock, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { handleCredentialsLogin } from "@/lib/actions";
 
 interface CredentialsLoginFormProps {
   setError: (error: string | null) => void;
@@ -14,13 +15,17 @@ interface CredentialsLoginFormProps {
   setIsLoading: (loading: boolean) => void;
 }
 
-export function CredentialsLoginForm({ setError, isLoading, setIsLoading }: CredentialsLoginFormProps) {
+export function CredentialsLoginForm({ 
+  setError, 
+  isLoading, 
+  setIsLoading 
+}: CredentialsLoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter(); 
+  const [focused, setFocused] = useState<string | null>(null);
+  const router = useRouter();
 
   return (
-    // Use the form's action prop to call the server action
     <form
       action={async (formData: FormData) => {
         setIsLoading(true);
@@ -36,62 +41,76 @@ export function CredentialsLoginForm({ setError, isLoading, setIsLoading }: Cred
             // If server action indicates success and provides URL, navigate client-side
             router.push(result.redirectUrl);
           } else {
-             console.warn("Login successful but no redirect URL provided.");
-             router.push("/auth/verify-signin");
+            console.warn("Login successful but no redirect URL provided.");
+            router.push("/auth/verify-signin");
           }
         } catch (error: any) {
           // Catch unexpected errors during server action execution itself
           console.error("Client-side Login Submit Error:", error);
           setError("An unexpected error occurred during login.");
         } finally {
-           if (!router) setIsLoading(false); // Stop loading if not redirecting
+          if (!router) setIsLoading(false); // Stop loading if not redirecting
         }
       }}
       className="space-y-4"
     >
       <div className="space-y-2">
-        <label
-          htmlFor="credentialsEmail"
-          className="text-sm font-medium text-black"
-        >
+        <label htmlFor="credentialsEmail" className="text-sm font-medium text-gray-700 flex items-center">
+          <Mail className="h-4 w-4 mr-2 text-primary-500" />
           Email
         </label>
-        <Input
-          id="credentialsEmail"
-          name="email" 
-          type="email"
-          placeholder="your@email.com"
-          className="w-full text-black"
-          required
-          disabled={isLoading} // Only disable based on isLoading
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <div className={`relative transition-all duration-300 ${
+          focused === 'email' ? 'scale-[1.02]' : ''
+        }`}>
+          <Input
+            id="credentialsEmail"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="w-full text-black border-gray-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+            required
+            disabled={isLoading}
+            onFocus={() => setFocused('email')}
+            onBlur={() => setFocused(null)}
+          />
+        </div>
       </div>
+
       <div className="space-y-2">
-        <label
-          htmlFor="credentialsPassword"
-          className="text-sm font-medium text-black"
-        >
+        <label htmlFor="credentialsPassword" className="text-sm font-medium text-gray-700 flex items-center">
+          <Lock className="h-4 w-4 mr-2 text-primary-500" />
           Password
         </label>
-        <Input
-          id="credentialsPassword"
-          name="password" 
-          type="password"
-          placeholder="••••••••"
-          className="w-full text-black"
-          required
-          disabled={isLoading} // Only disable based on isLoading
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className={`relative transition-all duration-300 ${
+          focused === 'password' ? 'scale-[1.02]' : ''
+        }`}>
+          <Input
+            id="credentialsPassword"
+            name="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            className="w-full text-black border-gray-200 bg-slate-50 focus:ring-primary-500 focus:border-primary-500"
+            required
+            disabled={isLoading}
+            onFocus={() => setFocused('password')}
+            onBlur={() => setFocused(null)}
+          />
+        </div>
       </div>
-      <motion.div whileHover={{ scale: isLoading ? 1 : 1.05 }} whileTap={{ scale: isLoading ? 1 : 0.95 }}>
+
+      <motion.div 
+        whileHover={{ scale: isLoading ? 1 : 1.02 }} 
+        whileTap={{ scale: isLoading ? 1 : 0.98 }}
+        className="mt-6"
+      >
         <Button
           type="submit"
-          className="w-full bg-primary-600 hover:bg-secondary-700 transition-colors duration-300"
-          disabled={isLoading} // Disable button only when loading
+          className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-secondary-600 hover:to-secondary-700 text-white font-medium py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 group"
+          disabled={isLoading}
         >
           {isLoading ? (
             <>
@@ -99,7 +118,10 @@ export function CredentialsLoginForm({ setError, isLoading, setIsLoading }: Cred
               Signing In...
             </>
           ) : (
-            "Sign In with Email"
+            <>
+              Sign In with Email
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </>
           )}
         </Button>
       </motion.div>

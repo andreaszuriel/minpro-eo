@@ -8,7 +8,7 @@ type ToasterProps = React.ComponentProps<typeof SonnerToaster>;
 export function CustomToaster({ ...props }: ToasterProps) {
   return (
     <SonnerToaster
-      position="bottom-right" 
+      position="top-right" 
       // theme="light" // Maybe needed
       richColors={true} 
       closeButton 
