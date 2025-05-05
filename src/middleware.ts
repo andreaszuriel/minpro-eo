@@ -58,7 +58,9 @@ export async function middleware(request: NextRequest) {
     "/auth/verify-request", 
     "/auth/error",
     "/admin/login",
-    "/events"
+    "/events",
+    "/auth/forgot-password",
+    "/auth/reset-password" 
   ];
   
   const PUBLIC_PATH_PREFIXES = [

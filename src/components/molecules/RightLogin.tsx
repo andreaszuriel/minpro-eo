@@ -4,9 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { MagicLinkForm } from "@/components/atoms/MagicLinkForm";
 import { CredentialsLoginForm } from "@/components/atoms/CredentialsLoginForm";
-import { GoogleAuthForm } from "@/components/atoms/GoogleAuthForm";
 import { SignupForm } from "@/components/atoms/SignupForm"; 
 import { useState } from "react";
+import Link from "next/link";
 
 interface AuthPanelProps {
   activeTab: string;
@@ -71,6 +71,16 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   setIsLoading={setIsLoading}
                 />
 
+                {/* Add Forgot Password Link */}
+                <div className="text-center">
+                  <Link 
+                    href="/auth/forgot-password" 
+                    className="text-primary-600 hover:text-secondary-500 text-sm font-medium transition-colors duration-300"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
+
                 <div className="relative flex items-center justify-center">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t"></span>
@@ -81,7 +91,8 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                 </div>
 
                 <MagicLinkForm />
-                <GoogleAuthForm />
+                {/* Google auth removed temporarily */}
+                {/* <GoogleAuthForm /> */}
 
                 <p className="text-center text-sm text-black">
                   New here?{" "}
@@ -110,12 +121,11 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   <p className="text-red-500 text-center text-sm bg-red-100 p-2 rounded">{error}</p>
                 )}
 
-                 <SignupForm
-                   setError={setError}
-                   isLoading={isLoading}
-                   setIsLoading={setIsLoading}
-                 />
-
+                <SignupForm
+                  setError={setError}
+                  isLoading={isLoading}
+                  setIsLoading={setIsLoading}
+                />
 
                 <div className="relative flex items-center justify-center">
                   <div className="absolute inset-0 flex items-center">
@@ -126,8 +136,8 @@ export default function RightLogin({ activeTab, setActiveTab }: AuthPanelProps) 
                   </span>
                 </div>
 
-                {/* Google Sign Up */}
-                <GoogleAuthForm />
+                {/* Google Sign Up removed temporarily */}
+                {/* <GoogleAuthForm /> */}
 
                 <p className="text-xs text-center text-gray-500 px-4">
                   By clicking "Sign up", you agree to our Terms & Conditions

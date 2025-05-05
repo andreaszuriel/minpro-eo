@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { EmailService } from "@/services/email.service"; 
 import crypto from 'crypto';
+import { forgotPasswordSchema } from "@/lib/validation/validation.schema";
 
-// Function to generate a secure token (you might put this in a utils file)
+// Function to generate a secure token
 function generateResetToken(): { rawToken: string; hashedToken: string } {
     const rawToken = crypto.randomBytes(32).toString('hex');
     // Hash the token before storing it in the DB
@@ -13,29 +14,44 @@ function generateResetToken(): { rawToken: string; hashedToken: string } {
 
 export async function POST(request: NextRequest) {
     try {
-        const { email } = await request.json();
+        const body = await request.json();
 
-        if (!email || typeof email !== 'string') {
-            return NextResponse.json({ message: "Email is required" }, { status: 400 });
+        // Validate with Zod
+        const validationResult = forgotPasswordSchema.safeParse(body);
+        
+        if (!validationResult.success) {
+            // Format Zod errors
+            const formattedErrors = validationResult.error.format();
+            return NextResponse.json({ 
+                message: "Validation failed", 
+                errors: formattedErrors 
+            }, { status: 400 });
         }
 
+        const { email } = validationResult.data;
         const lowerCaseEmail = email.toLowerCase().trim();
 
         const user = await prisma.user.findUnique({
             where: { email: lowerCaseEmail },
-            select: { id: true, name: true, email: true } // Select necessary fields
+            select: { id: true, name: true, email: true }
         });
 
+        // For security reasons, we don't reveal if the email exists or not
         if (!user) {
             console.log(`Password reset requested for non-existent email: ${email.substring(0,3)}...`);
-            return NextResponse.json({ message: "If an account with that email exists, a password reset link has been sent." });
+            return NextResponse.json({ 
+                message: "If an account with that email exists, a password reset link has been sent." 
+            });
         }
 
-        // --- User exists, proceed ---
-
-        // Generate token and expiry 
+        // User exists, proceed with token generation
         const { rawToken, hashedToken } = generateResetToken();
-        const expires = new Date(Date.now() + 3600 * 1000); 
+        const expires = new Date(Date.now() + 3600 * 1000); // 1 hour from now
+
+        // Check if a token already exists for this user and delete it
+        await prisma.passwordResetToken.deleteMany({
+            where: { userId: user.id }
+        });
 
         // Store the HASHED token in the database
         await prisma.passwordResetToken.create({
@@ -55,13 +71,18 @@ export async function POST(request: NextRequest) {
             console.log(`Password reset email sent to ${user.email}`);
         } catch (emailError) {
             console.error(`Failed to send password reset email to ${user.email}:`, emailError);
+            // Don't expose email errors to the client
         }
 
-        return NextResponse.json({ message: "If an account with that email exists, a password reset link has been sent." });
+        return NextResponse.json({ 
+            message: "If an account with that email exists, a password reset link has been sent." 
+        });
 
     } catch (error) {
         console.error("Forgot password error:", error);
         // Generic error for internal issues
-        return NextResponse.json({ message: "An error occurred. Please try again later." }, { status: 500 });
+        return NextResponse.json({ 
+            message: "An error occurred. Please try again later." 
+        }, { status: 500 });
     }
 }

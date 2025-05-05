@@ -72,6 +72,12 @@ export const userSchema = {
   params: schemas.userId,
 };
 
+export const forgotPasswordSchema = z.object({
+  email: z.string()
+    .min(1, "Email is required")
+    .email("Invalid email format")
+});
+
 export const signInSchema = schemas.auth.signIn;
 export const signUpSchema = schemas.auth.signUp;
 export const resetPasswordSchema = schemas.auth.resetPassword;
