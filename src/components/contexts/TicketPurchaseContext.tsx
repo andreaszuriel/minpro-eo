@@ -19,7 +19,8 @@ import React, {
     PromotionInfo,
   } from '@/lib/price-calculations'; 
   import { formatCurrency as formatCurrencyUtil } from '@/lib/utils';
-  
+  import { toast } from "sonner";  
+
   // --- Interface Definitions  ---
   export interface ConcertInfo {
     id: number;
@@ -336,50 +337,89 @@ import React, {
   
   
     // --- Handle Purchase ---
-    const handlePurchase = useCallback(() => {
-      if (!selectedTier || quantity <= 0 || currentTierPrice <= 0 || sessionStatus !== 'authenticated' || !session?.user?.id) {
-        console.error("Purchase conditions not met:", { selectedTier, quantity, currentTierPrice, sessionStatus });
-        // TODO show a user-facing error message
-        return;
-      }
-  
-      // Get fresh breakdown details for saving
-      const finalBreakdown = priceBreakdown;
-  
-      const purchaseDataToSave = {
-        eventId: concert.id,
-        eventTitle: concert.title || "Concert Event",
-        eventDate: concert.startDate,
-        eventTime: concert.time,
-        currency: concert.currency,
-        tier: selectedTier,
-        quantity: quantity,
-        unitPrice: currentTierPrice,
-        basePrice: finalBreakdown.basePrice,
-        couponId: selectedCouponId ? parseInt(selectedCouponId, 10) : undefined,
-        couponCode: selectedCouponDetails?.code,
-        couponDiscountAmount: finalBreakdown.couponDiscount,
-        pointsUsed: pointsToUseValidated, // Use the validated amount
-        pointsDiscountAmount: finalBreakdown.pointsDiscount, // Use the calculated discount
-        promotionCode: appliedPromotion?.code,
-        promotionDiscountAmount: finalBreakdown.promotionDiscount,
-        taxAmount: finalBreakdown.taxAmount,
-        finalPrice: finalBreakdown.finalPrice,
-        userId: session.user.id,
-      };
-  
-      console.log("Saving Pending Purchase Data:", purchaseDataToSave);
-      try {
-          localStorage.setItem('pendingPurchase', JSON.stringify(purchaseDataToSave));
-          router.push(`/purchase-confirmation?eventId=${concert.id}`);
-      } catch (error) {
-          console.error("Failed to save purchase data to localStorage:", error);
-      }
-    }, [
-        selectedTier, quantity, currentTierPrice, sessionStatus, session?.user?.id,
-        concert, priceBreakdown, selectedCouponId, selectedCouponDetails,
-        pointsToUseValidated, appliedPromotion, router // Include router in dependencies
-    ]);
+   const handlePurchase = useCallback(() => {
+    // Check authentication first
+    if (sessionStatus !== 'authenticated') {
+      toast.error("Authentication Required", {
+        description: "Please log in to purchase tickets."
+      });
+      console.error("Purchase conditions not met:", { sessionStatus });
+      return;
+    }
+    
+    // Then check other conditions
+    if (!selectedTier) {
+      toast.error("Ticket Selection Required", {
+        description: "Please select a ticket tier to continue."
+      });
+      console.error("Purchase conditions not met:", { selectedTier });
+      return;
+    }
+    
+    if (quantity <= 0) {
+      toast.error("Invalid Quantity", {
+        description: "Please select at least one ticket."
+      });
+      console.error("Purchase conditions not met:", { quantity });
+      return;
+    }
+    
+    if (currentTierPrice <= 0) {
+      toast.error("Price Error", {
+        description: "There was an issue with the ticket price. Please try again."
+      });
+      console.error("Purchase conditions not met:", { currentTierPrice });
+      return;
+    }
+
+    if (!session?.user?.id) {
+      toast.error("User ID Missing", {
+        description: "There was an issue with your user account. Please try logging in again."
+      });
+      console.error("Purchase conditions not met:", { userId: session?.user?.id });
+      return;
+    }
+
+    // Get fresh breakdown details for saving
+    const finalBreakdown = priceBreakdown;
+
+    const purchaseDataToSave = {
+      eventId: concert.id,
+      eventTitle: concert.title || "Concert Event",
+      eventDate: concert.startDate,
+      eventTime: concert.time,
+      currency: concert.currency,
+      tier: selectedTier,
+      quantity: quantity,
+      unitPrice: currentTierPrice,
+      basePrice: finalBreakdown.basePrice,
+      couponId: selectedCouponId ? parseInt(selectedCouponId, 10) : undefined,
+      couponCode: selectedCouponDetails?.code,
+      couponDiscountAmount: finalBreakdown.couponDiscount,
+      pointsUsed: pointsToUseValidated, // Use the validated amount
+      pointsDiscountAmount: finalBreakdown.pointsDiscount, // Use the calculated discount
+      promotionCode: appliedPromotion?.code,
+      promotionDiscountAmount: finalBreakdown.promotionDiscount,
+      taxAmount: finalBreakdown.taxAmount,
+      finalPrice: finalBreakdown.finalPrice,
+      userId: session.user.id,
+    };
+
+    console.log("Saving Pending Purchase Data:", purchaseDataToSave);
+    try {
+      localStorage.setItem('pendingPurchase', JSON.stringify(purchaseDataToSave));
+      router.push(`/purchase-confirmation?eventId=${concert.id}`);
+    } catch (error) {
+      console.error("Failed to save purchase data to localStorage:", error);
+      toast.error("Save Error", {
+        description: "There was a problem preparing your order. Please try again."
+      });
+    }
+  }, [
+    selectedTier, quantity, currentTierPrice, sessionStatus, session?.user?.id,
+    concert, priceBreakdown, selectedCouponId, selectedCouponDetails,
+    pointsToUseValidated, appliedPromotion, router // Include router in dependencies
+  ]);
   
   
     // --- Context Value ---

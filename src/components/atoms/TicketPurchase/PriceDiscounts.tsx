@@ -1,4 +1,3 @@
-// src/components/TicketPurchase/PriceDiscounts.tsx
 import React from 'react';
 import { useTicketPurchase } from '@/components/contexts/TicketPurchaseContext';
 import { Label } from '@/components/ui/label';

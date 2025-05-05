@@ -1,9 +1,12 @@
+"use client";
+
 import React from 'react';
 import { useTicketPurchase, ConcertInfo, TicketPurchaseProvider } from '@/components/contexts/TicketPurchaseContext'; // Import context hook and type
 import { PriceAdditions } from '@/components/atoms/TicketPurchase/PriceAdditions';
 import { PriceDiscounts } from '@/components/atoms/TicketPurchase/PriceDiscounts';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Ticket, ShoppingCart, AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Ticket, ShoppingCart, AlertCircle, Loader2, LogIn } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const TicketPurchaseLayout: React.FC = () => {
   const {
@@ -18,7 +21,7 @@ const TicketPurchaseLayout: React.FC = () => {
     formatCurrency,
     handlePurchase,
     taxRate,
-    currentTierPrice, // For disabling button
+    currentTierPrice, 
     selectedCouponDetails,
     appliedPromotion,
   } = useTicketPurchase();
@@ -27,6 +30,7 @@ const TicketPurchaseLayout: React.FC = () => {
   const day = eventDate.getDate();
   const month = eventDate.toLocaleString('default', { month: 'short' });
   const formattedEventDate = eventDate.toLocaleDateString('en-US', { weekday: 'long' });
+  const router = useRouter();
 
   const isCheckoutDisabled =
     !selectedTier ||
@@ -40,7 +44,7 @@ const TicketPurchaseLayout: React.FC = () => {
   const getCheckoutButtonTitle = () => {
       if(remainingSeats <= 0) return 'Tickets are sold out';
       if (!selectedTier) return 'Please select a ticket type';
-      if (quantity <= 0) return 'Please select quantity'; // Should not happen with validation, but good fallback
+      if (quantity <= 0) return 'Please select quantity'; // Good Hfallback
       if (currentTierPrice <= 0 && selectedTier) return 'Selected tier has no price';
       if (sessionStatus === 'loading') return 'Verifying login status...';
       if (sessionStatus === 'unauthenticated') return 'Please sign in to purchase';
@@ -173,16 +177,27 @@ const TicketPurchaseLayout: React.FC = () => {
             )}
 
             {/* Checkout Button */}
-            <Button
-              className="cursor-pointer w-full py-3 text-lg bg-secondary-600 hover:bg-secondary-700 transition-all shadow-lg shadow-secondary-500/20 group disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
-              disabled={isCheckoutDisabled}
-              onClick={handlePurchase}
-              title={getCheckoutButtonTitle()} 
-            >
-              <ShoppingCart className="mr-2 h-5 w-5 transition-transform group-hover:scale-110" />
-              REVIEW & CHECKOUT
-            </Button>
-
+            {sessionStatus === 'authenticated' ? (
+      <Button
+        className="cursor-pointer w-full py-3 text-lg bg-secondary-600 hover:bg-secondary-700 transition-all shadow-lg shadow-secondary-500/20 group disabled:bg-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
+        disabled={isCheckoutDisabled}
+        onClick={handlePurchase}
+        title={getCheckoutButtonTitle()}
+      >
+        <ShoppingCart className="mr-2 h-5 w-5 transition-transform group-hover:scale-110" />
+        REVIEW & CHECKOUT
+      </Button>
+    ) : (
+      <Button
+        className="cursor-pointer w-full py-3 text-lg bg-primary-600 hover:bg-secondary-700 transition-all shadow-lg shadow-primary-500/20 group relative"
+        onClick={() => router.push('/auth/signin')}
+        title="Log in to purchase tickets"
+      >
+        <LogIn className="mr-2 h-5 w-5 transition-transform group-hover:scale-110" />
+        LOG IN TO PURCHASE
+        <span className="absolute bottom-0 left-0 w-full h-0.5 bg-white opacity-0 group-hover:opacity-30 transition-opacity"></span>
+      </Button>
+    )}
             {/* Low Stock Warning */}
             {isLowStock && !isCheckoutDisabled && (
               <p className="text-amber-600 text-sm text-center flex items-center justify-center">
