@@ -11,7 +11,8 @@
     "generate:dev": "npx prisma generate dev",
     "studio": "npx prisma studio",
     "dev-backend": "ts-node-dev src/index.ts",
-    "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
+    "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts",
+     "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
