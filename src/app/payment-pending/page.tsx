@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { format, differenceInSeconds } from 'date-fns';
+import { differenceInSeconds } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle, Clock, Info, LoaderCircle, UploadCloud, X } from 'lucide-react';
@@ -42,7 +42,17 @@ const formatCurrency = (amount: number | undefined) => {
     }).format(amount);
 };
 
-export default function PaymentPendingPage() {
+// Loading component to show during suspense
+function PaymentPendingLoading() {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-slate-50">
+            <LoaderCircle className="animate-spin h-10 w-10 text-primary-600" />
+        </div>
+    );
+}
+
+// The actual component that uses useSearchParams
+function PaymentPendingContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const transactionId = searchParams.get('transactionId');
@@ -456,5 +466,14 @@ export default function PaymentPendingPage() {
                 </Card>
             </div>
         </div>
+    );
+}
+
+// Main Page Component
+export default function PaymentPendingPage() {
+    return (
+        <Suspense fallback={<PaymentPendingLoading />}>
+            <PaymentPendingContent />
+        </Suspense>
     );
 }
