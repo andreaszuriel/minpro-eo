@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -44,7 +44,20 @@ interface TransactionApiPayload {
     promotionCode?: string;
 }
 
-export default function PurchaseConfirmationPage() {
+// Loading component for Suspense fallback
+function LoadingUI() {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-800">
+            <div className="bg-white p-6 rounded-xl shadow-lg flex items-center space-x-4 border border-slate-200">
+                <LoaderCircle className="animate-spin h-8 w-8 text-primary-600" />
+                <span className="ml-2 font-medium">Loading purchase details...</span>
+            </div>
+        </div>
+    );
+}
+
+// Main component that uses params
+function PurchaseConfirmationContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const eventIdQuery = searchParams.get('eventId');
@@ -397,5 +410,14 @@ export default function PurchaseConfirmationPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+// Main component export
+export default function PurchaseConfirmationPage() {
+    return (
+        <Suspense fallback={<LoadingUI />}>
+            <PurchaseConfirmationContent />
+        </Suspense>
     );
 }
