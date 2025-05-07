@@ -301,7 +301,7 @@ function TicketDetailsModal({
                         </p>
                           <Button 
                           asChild // Allows Button to wrap Link behavior
-                          className="mt-3 bg-yellow-600 hover:bg-yellow-700 text-white shadow-sm shadow-yellow-500/20"
+                          className="mt-3 bg-secondary-600 hover:bg-secondary-700 text-white shadow-sm shadow-yellow-500/20"
                         >
                           <Link href={`/payment-pending?transactionId=${transaction.id}`}>
                             View Payment Instructions
