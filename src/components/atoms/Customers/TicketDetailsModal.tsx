@@ -30,6 +30,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import type { ExtendedTicketTransaction } from './DashboardTickets';
 import type { TransactionStatus } from '@prisma/client';
+import { useRouter } from 'next/navigation'; 
+import Link from 'next/link';
 
 interface TicketDetailsModalProps {
   isOpen: boolean;
@@ -52,7 +54,8 @@ function TicketDetailsModal({
   const hasETickets = transaction.status === 'PAID' && transaction.tickets && transaction.tickets.length > 0;
   
   const TAX_RATE = 0.11;
-  
+  const router = useRouter();
+
   // Format date for display
   const formatDateTime = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -296,8 +299,13 @@ function TicketDetailsModal({
                           Please complete your payment before the deadline to secure your tickets.
                           You can view payment instructions in your email or by contacting support.
                         </p>
-                        <Button className="mt-3 bg-yellow-600 hover:bg-yellow-700 text-white shadow-sm shadow-yellow-500/20">
-                          View Payment Instructions
+                          <Button 
+                          asChild // Allows Button to wrap Link behavior
+                          className="mt-3 bg-yellow-600 hover:bg-yellow-700 text-white shadow-sm shadow-yellow-500/20"
+                        >
+                          <Link href={`/payment-pending?transactionId=${transaction.id}`}>
+                            View Payment Instructions
+                          </Link>
                         </Button>
                       </div>
                     </div>
