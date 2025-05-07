@@ -5,7 +5,9 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import {
   XCircle, UserCheck, Ticket, ImageIcon,
-  Loader2, CircleCheck
+  Loader2, CircleCheck,
+  Percent,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -21,6 +23,8 @@ interface TransactionDetailsModalProps {
   formatCurrency: (amount: number, currency: string) => string;
   onTransactionUpdate?: (id: number, status: TransactionStatus) => void;
 }
+
+const TAX_RATE = 0.11; // 11%
 
 const TransactionDetailsModal = ({
   isOpen,
@@ -133,6 +137,25 @@ const resendTicket = async (id: number) => {
   }
 };
 
+  // --- Financial Calculations ---
+  let promotionDisplayAmount = 0;
+  let promotionCodeDisplay = '';
+  if (transaction.promotion && transaction.promotion.discount > 0) {
+    promotionCodeDisplay = transaction.promotion.code;
+    if (transaction.promotion.discountType === 'PERCENTAGE') {
+      // Apply percentage to base price. Adjust if business logic differs (e.g., after coupon).
+      promotionDisplayAmount = (transaction.basePrice * transaction.promotion.discount) / 100;
+    } else { // FIXED_AMOUNT
+      promotionDisplayAmount = transaction.promotion.discount;
+    }
+  }
+
+  // Subtotal after coupon and promotion discounts
+  const subtotalAfterDiscounts = transaction.basePrice - transaction.couponDiscount - promotionDisplayAmount;
+
+
+  const taxAmount = subtotalAfterDiscounts > 0 ? subtotalAfterDiscounts * TAX_RATE : 0;
+
   if (!isOpen) return null;
 
   return (
@@ -233,25 +256,49 @@ const resendTicket = async (id: number) => {
 
                 {/* Financial Information */}
                 <div className="space-y-1 text-sm">
-                  <div className="flex items-center">
-                    <span className="w-24 text-gray-600">Base Price:</span>
-                    <span className="font-medium text-gray-800">{formatCurrency(transaction.basePrice, 'IDR')}</span>
-                  </div>
-                  {transaction.couponDiscount > 0 && (
-                    <div className="flex items-center">
-                      <span className="w-24 text-gray-600">Discount:</span>
-                      <span className="font-medium text-green-600">-{formatCurrency(transaction.couponDiscount, 'IDR')}</span>
-                    </div>
-                  )}
-                  {transaction.pointsUsed > 0 && (
-                    <div className="flex items-center">
-                      <span className="w-24 text-gray-600">Points Used:</span>
-                      <span className="font-medium text-gray-800">{transaction.pointsUsed} pts</span>
-                    </div>
-                  )}
-                  <div className="flex items-center pt-2 border-t border-gray-200 mt-2">
-                    <span className="w-24 text-gray-700">Final Price:</span>
-                    <span className="font-bold text-gray-900">{formatCurrency(transaction.finalPrice, 'IDR')}</span>
+        <div className="flex items-center">
+        <span className="w-32 text-gray-600">Base Price:</span> {/* Increased width */}
+        <span className="font-medium text-gray-800">{formatCurrency(transaction.basePrice, 'IDR')}</span>
+        </div>
+        
+        {transaction.couponDiscount > 0 && (
+            <div className="flex items-center">
+            <span className="w-32 text-gray-600 flex items-center"><Tag className="w-3 h-3 mr-1 text-green-500"/>Coupon Discount:</span>
+            <span className="font-medium text-green-600">-{formatCurrency(transaction.couponDiscount, 'IDR')}</span>
+            </div>
+        )}
+        
+        {promotionDisplayAmount > 0 && (
+            <div className="flex items-center">
+            <span className="w-32 text-gray-600 flex items-center"><Tag className="w-3 h-3 mr-1 text-blue-500"/>Promotion ({promotionCodeDisplay}):</span>
+            <span className="font-medium text-blue-600">-{formatCurrency(promotionDisplayAmount, 'IDR')}</span>
+            </div>
+        )}
+        
+        {transaction.pointsUsed > 0 && (
+            <div className="flex items-center">
+            <span className="w-32 text-gray-600">Points Used:</span>
+            <span className="font-medium text-gray-800">{transaction.pointsUsed} pts</span>
+            </div>
+        )}
+        
+        {(transaction.couponDiscount > 0 || promotionDisplayAmount > 0) && (
+            <div className="flex items-center pt-1 border-t border-gray-200/60 mt-1">
+            <span className="w-32 text-gray-700">Subtotal:</span>
+            <span className="font-medium text-gray-800">{formatCurrency(subtotalAfterDiscounts, 'IDR')}</span>
+            </div>
+        )}
+        
+        {taxAmount > 0 && (
+            <div className="flex items-center">
+            <span className="w-32 text-gray-600 flex items-center"><Percent className="w-3 h-3 mr-1 text-orange-500"/>Tax ({(TAX_RATE * 100).toFixed(0)}%):</span>
+            <span className="font-medium text-gray-800">{formatCurrency(taxAmount, 'IDR')}</span>
+            </div>
+        )}
+        
+        <div className="flex items-center pt-2 border-t border-gray-200 mt-2">
+        <span className="w-32 text-gray-700 font-semibold">Final Price:</span>
+        <span className="font-bold text-gray-900 text-base">{formatCurrency(transaction.finalPrice, 'IDR')}</span>
                   </div>
                 </div>
               </div>

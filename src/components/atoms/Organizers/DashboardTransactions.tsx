@@ -12,13 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import type { Transaction, TransactionStatus } from '@prisma/client';
+import type { Transaction, TransactionStatus, Promotion } from '@prisma/client';
 import TransactionDetailsModal from './TransactionDetailsModal';
 
 // --- Interfaces ---
 export type ExtendedTransaction = Transaction & {
   event: { title: string; image: string | null };
   user: { name: string | null; email: string; image?: string | null };
+  promotion: Promotion | null; 
 };
 
 interface DashboardTransactionsProps {
@@ -133,6 +134,8 @@ function DashboardTransactionsComponent({
       );
     });
 
+
+    
   // --- Render ---
   return (
     <>

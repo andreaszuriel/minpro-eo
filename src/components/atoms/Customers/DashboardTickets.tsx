@@ -4,7 +4,7 @@ import { useState, useEffect, JSX } from 'react';
 import Image from 'next/image';
 import { Toaster } from 'sonner';
 import {
-  Search, TicketCheck, Calendar, Info, ExternalLink
+  Search, TicketCheck, Calendar, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import TicketDetailsModal from './TicketDetailsModal';
-import type { Transaction, TransactionStatus, Ticket } from '@prisma/client';
+import type { Transaction, TransactionStatus, Ticket, Promotion } from '@prisma/client';
 
 // Extended types for our components
 export type ExtendedTicketTransaction = Transaction & {
@@ -27,6 +27,7 @@ export type ExtendedTicketTransaction = Transaction & {
     serialCode: string;
     isUsed: boolean;
   })[];
+  promotion: Promotion | null; 
 };
 
 interface CustomerTicketsProps {

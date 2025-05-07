@@ -1,8 +1,37 @@
+"use client";
+
 import { Music, Calendar } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 export default function HeroSection() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  // Handle the create concert button click
+  const handleCreateConcert = () => {
+    // If user is not authenticated, redirect to sign in
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+
+    // Check if user exists and has a role
+    if (session?.user) {
+      // If user is an organizer, redirect to the create page
+      if (session.user.role === "organizer") {
+        router.push(`/organizer/events/${session.user.id}/create`);
+      } else {
+        // If user is a customer, show a toast message
+        toast.error("You need to be an Organizer to use this feature");
+      }
+    }
+  };
+
   return (
     <section className="relative flex h-[75vh] flex-col items-center justify-center px-4">
       {/* Background Image with optimized loading */}
@@ -36,20 +65,20 @@ export default function HeroSection() {
 
         <div className="flex flex-col gap-4 sm:flex-row">
           <Link 
-            href="/concerts" 
-            className="flex items-center gap-2 rounded-md bg-primary-600 px-6 py-3 text-white transition-colors hover:bg-primary-400"
+            href="/events" 
+            className="flex items-center justify-center gap-2 rounded-md bg-primary-600 px-6 py-3 text-white transition-colors hover:bg-primary-400 min-w-[180px]"
           >
             <Music size={20} aria-hidden="true" />
             <span>View Concerts</span>
           </Link>
 
-          <Link 
-            href="/concerts/create" 
-            className="flex items-center gap-2 rounded-md border border-primary-300 px-6 py-3 text-primary-300 transition-colors hover:bg-primary-100 hover:text-white"
+          <Button
+            onClick={handleCreateConcert}
+            className="text-lg py-6 flex items-center justify-center gap-2 rounded-md bg-transparent border border-primary-300 px-6 text-primary-300 transition-colors hover:bg-primary-100 hover:text-white min-w-[180px]"
           >
             <Calendar size={20} aria-hidden="true" />
             <span>Create Concerts</span>
-          </Link>
+          </Button>
         </div>
       </div>
     </section>

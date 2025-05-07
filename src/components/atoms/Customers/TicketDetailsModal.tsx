@@ -12,7 +12,9 @@ import {
   ExternalLink,
   Download,
   Info,
-  ChevronRight
+  ChevronRight,
+  Tag,
+  Percent
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,6 +51,8 @@ function TicketDetailsModal({
   // Check if we have e-tickets available (paid status)
   const hasETickets = transaction.status === 'PAID' && transaction.tickets && transaction.tickets.length > 0;
   
+  const TAX_RATE = 0.11;
+  
   // Format date for display
   const formatDateTime = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -72,6 +76,21 @@ function TicketDetailsModal({
 
   // Active ticket state for animation
   const [activeTicket, setActiveTicket] = useState<string | null>(null);
+
+    // --- Financial Calculations ---
+    let promotionDisplayAmount = 0;
+    let promotionCodeDisplay = ''; // For display
+    if (transaction.promotion && transaction.promotion.discount > 0) {
+        promotionCodeDisplay = transaction.promotion.code;
+        if (transaction.promotion.discountType === 'PERCENTAGE') {
+            promotionDisplayAmount = (transaction.basePrice * transaction.promotion.discount) / 100;
+        } else { // FIXED_AMOUNT
+            promotionDisplayAmount = transaction.promotion.discount;
+        }
+    }
+    
+    const subtotalAfterDiscounts = transaction.basePrice - transaction.couponDiscount - promotionDisplayAmount;
+    const taxAmount = subtotalAfterDiscounts > 0 ? subtotalAfterDiscounts * TAX_RATE : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -181,18 +200,18 @@ function TicketDetailsModal({
                 
                 {/* Order Summary */}
                 <div className="rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                  <div className="bg-slate-50 px-4 py-3 border-b border-gray-200">
-                    <h3 className="font-medium text-primary-700 flex items-center">
-                      <Info className="mr-2 h-4 w-4 text-primary-600" />
-                      Order Summary
-                    </h3>
-                  </div>
-                  <div className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-1.5">
-                        <span className="text-gray-600">Status</span>
-                        <div>{getStatusBadge(transaction.status)}</div>
-                      </div>
+        <div className="bg-slate-50 px-4 py-3 border-b border-gray-200">
+        <h3 className="font-medium text-primary-700 flex items-center">
+        <Info className="mr-2 h-4 w-4 text-primary-600" />
+        Order Summary
+        </h3>
+        </div>
+        <div className="p-4">
+        <div className="space-y-3 text-sm"> 
+        <div className="flex justify-between items-center py-1.5">
+        <span className="text-gray-600">Status</span>
+        <div>{getStatusBadge(transaction.status)}</div>
+        </div>
                       
                       {transaction.status === 'PENDING' && (
                         <div className="flex justify-between items-center py-1.5 bg-yellow-50 px-3 rounded-md">
@@ -217,18 +236,44 @@ function TicketDetailsModal({
                         <span className="text-gray-600">Price per Ticket</span>
                         <span className="font-medium text-gray-800">{formatCurrency(transaction.basePrice / transaction.ticketQuantity)}</span>
                       </div>
+
+                      <div className="flex justify-between items-center py-1.5">
+                        <span className="text-gray-600">Total Base Price</span>
+                        <span className="font-medium text-gray-800">{formatCurrency(transaction.basePrice)}</span>
+                      </div>
                       
                       {transaction.couponDiscount > 0 && (
                         <div className="flex justify-between items-center py-1.5 bg-green-50 px-3 rounded-md">
-                          <span className="text-green-700">Discount</span>
+                          <span className="text-green-700 flex items-center"><Tag className="w-3.5 h-3.5 mr-1"/>Coupon Discount</span>
                           <span className="text-green-700 font-medium">-{formatCurrency(transaction.couponDiscount)}</span>
+                        </div>
+                      )}
+
+                      {promotionDisplayAmount > 0 && (
+                        <div className="flex justify-between items-center py-1.5 bg-blue-50 px-3 rounded-md">
+                           <span className="text-blue-700 flex items-center"><Tag className="w-3.5 h-3.5 mr-1"/>Promotion ({promotionCodeDisplay})</span>
+                           <span className="text-blue-700 font-medium">-{formatCurrency(promotionDisplayAmount)}</span>
                         </div>
                       )}
                       
                       {transaction.pointsUsed > 0 && (
-                        <div className="flex justify-between items-center py-1.5 bg-blue-50 px-3 rounded-md">
-                          <span className="text-blue-700">Points Used</span>
-                          <span className="text-blue-700 font-medium">{transaction.pointsUsed} points</span>
+                        <div className="flex justify-between items-center py-1.5 bg-sky-50 px-3 rounded-md"> {/* Changed color slightly for points */}
+                          <span className="text-sky-700">Points Used</span>
+                          <span className="text-sky-700 font-medium">{transaction.pointsUsed} points</span>
+                        </div>
+                      )}
+
+                      {(transaction.couponDiscount > 0 || promotionDisplayAmount > 0) && (
+                        <div className="flex justify-between items-center py-1.5 border-t border-gray-200/60 mt-1.5 pt-1.5">
+                            <span className="text-gray-700">Subtotal</span>
+                            <span className="font-medium text-gray-800">{formatCurrency(subtotalAfterDiscounts)}</span>
+                        </div>
+                      )}
+                      
+                      {taxAmount > 0 && (
+                         <div className="flex justify-between items-center py-1.5">
+                            <span className="text-gray-600 flex items-center"><Percent className="w-3.5 h-3.5 mr-1"/>Tax ({(TAX_RATE * 100).toFixed(0)}%)</span>
+                            <span className="font-medium text-gray-800">{formatCurrency(taxAmount)}</span>
                         </div>
                       )}
                       

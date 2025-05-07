@@ -52,6 +52,7 @@ export class TransactionService {
             createdAt: 'asc',
           }
         },
+        promotion: true,
       },
       orderBy: {
         createdAt: "desc",
