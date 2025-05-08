@@ -44,7 +44,7 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-black py-24 text-center md:py-32">
+      <section className="relative overflow-hidden bg-gray-900 py-24 text-center md:py-32">
         <div className="absolute left-0 top-0 h-full w-full opacity-40">
           <div className="h-full w-full bg-gradient-to-b from-transparent via-black/60 to-black"></div>
           <Image

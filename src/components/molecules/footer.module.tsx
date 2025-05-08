@@ -2,11 +2,15 @@
 
 import { useState } from 'react';
 import { Calendar, Send, Twitter, Instagram, Mail } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function Footer() {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { data: session, status } = useSession();
+  const router = useRouter();
   
   const handleSubmit = (e: { preventDefault: () => void; }) => {
     e.preventDefault();
@@ -23,6 +27,22 @@ export default function Footer() {
       // Reset the success message after 3 seconds
       setTimeout(() => setSubmitted(false), 3000);
     }, 800);
+  };
+
+  // Handle dashboard navigation based on auth state
+  const handleDashboardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (status === 'authenticated' && session?.user?.id) {
+      router.push(`/dashboard/${session.user.id}`);
+    } else {
+      router.push('/auth/signin');
+    }
+  };
+
+  // Handle events page navigation
+  const handleEventsClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push('/events');
   };
 
   return (
@@ -49,18 +69,21 @@ export default function Footer() {
               <h3 className="font-medium text-secondary-300 mb-3">Quick Links</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="/events" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
+                  <a 
+                    href="/events" 
+                    onClick={handleEventsClick}
+                    className="text-primary-100 hover:text-secondary-300 transition-colors duration-200"
+                  >
                     Explore Events
                   </a>
                 </li>
                 <li>
-                  <a href="/artists" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
-                    Artists
-                  </a>
-                </li>
-                <li>
-                  <a href="/venues" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
-                    Venues
+                  <a 
+                    href={status === 'authenticated' ? `/dashboard/${session?.user?.id}` : "/auth/signin"} 
+                    onClick={handleDashboardClick}
+                    className="text-primary-100 hover:text-secondary-300 transition-colors duration-200"
+                  >
+                    Your Dashboard
                   </a>
                 </li>
               </ul>
@@ -94,12 +117,12 @@ export default function Footer() {
                   </a>
                 </li>
                 <li>
-                  <a href="/privacy" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
+                  <a href="/terms" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
                     Privacy Policy
                   </a>
                 </li>
                 <li>
-                  <a href="/cookies" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
+                  <a href="/terms" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
                     Cookie Policy
                   </a>
                 </li>

@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { getTokenFromRequest } from "./auth-helpers";
 
+const rateLimitStore = new Map<string, { count: number, resetTime: number }>();
+
+// Rate limit configuration
+const RATE_LIMIT = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 requests per windowMs
+  message: 'Too many login attempts. Please try again later.'
+};
+
+function isRateLimited(ip: string): { limited: boolean, remaining: number } {
+  const now = Date.now();
+  const record = rateLimitStore.get(ip);
+  
+  // If no record or window expired, create new record
+  if (!record || now > record.resetTime) {
+    rateLimitStore.set(ip, { 
+      count: 1, 
+      resetTime: now + RATE_LIMIT.windowMs 
+    });
+    return { limited: false, remaining: RATE_LIMIT.max - 1 };
+  }
+  
+  // Increment count
+  record.count += 1;
+  
+  // Check if over limit
+  if (record.count > RATE_LIMIT.max) {
+    return { limited: true, remaining: 0 };
+  }
+  
+  return { limited: false, remaining: RATE_LIMIT.max - record.count };
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   console.log("MIDDLEWARE: Checking authentication for path:", pathname);
@@ -12,10 +45,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
   
-  // Basic rate limiting for login pages 
+  // Basic rate limiting for login pages
   if (pathname === "/auth/signin" || pathname === "/admin/login") {
-    const ip = request.headers.get("x-forwarded-for") || "";
+    const ip = request.headers.get("x-forwarded-for") || 
+               request.headers.get("x-real-ip") || 
+               "unknown";
     
+    const { limited, remaining } = isRateLimited(ip);
+    
+    if (limited) {
+      console.log(`RATE LIMIT: IP ${ip.substring(0, 8)}... exceeded login attempts`);
+      
+      // Return 429 Too Many Requests
+      return new NextResponse(
+        JSON.stringify({ error: RATE_LIMIT.message }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil(RATE_LIMIT.windowMs / 1000))
+          }
+        }
+      );
+    }
+    
+    console.log(`RATE LIMIT: IP ${ip.substring(0, 8)}... has ${remaining} attempts remaining`);
   }
 
   // Log all cookies for debugging
@@ -51,7 +105,7 @@ export async function middleware(request: NextRequest) {
   console.log("MIDDLEWARE: authjs Cookie:", authJsCookie?.value?.substring(0, 5) + "..." || "Not found");
   console.log("MIDDLEWARE: Secure authjs Cookie:", secureAuthJsCookie?.value?.substring(0, 5) + "..." || "Not found"); 
 
-  // Define constants for path patterns - easier to maintain
+  // Define constants for path patterns
   const PUBLIC_EXACT_PATHS = [
     "/",
     "/auth/signin",
@@ -60,6 +114,8 @@ export async function middleware(request: NextRequest) {
     "/admin/login",
     "/events",
     "/auth/forgot-password",
+    "/about",
+    "/terms",
     "/auth/reset-password" 
   ];
   
