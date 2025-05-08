@@ -1,10 +1,27 @@
-import { NextRequest, NextResponse } from "next/server"; // NextResponse for more structured responses
+import { NextRequest, NextResponse } from "next/server";
 import { TransactionService } from "@/services/transactions.service";
 import { ApiError, isValidStatus } from "@/lib/utils";
-import { TransactionStatus, Prisma, Transaction } from "@prisma/client"; // Import Transaction type
-import { auth } from '@/auth'; // Make sure this path is correct for your auth setup
+import { TransactionStatus, Prisma, UserRole } from "@prisma/client"; 
+import { auth } from '@/auth';
 
-// Error handling wrapper (no changes needed here if it works for you)
+// Define the expected shape of the transaction when fully loaded with relations
+type TransactionWithDetails = Prisma.TransactionGetPayload<{
+  include: {
+    event: true;
+    user: true;
+    tickets: true;
+    promotion: true;
+  };
+}>;
+
+// Define the shape of the current user object we expect from the session
+interface CurrentUser {
+  id: string;
+  role: UserRole;
+  isAdmin: boolean; 
+}
+
+// Error handling wrapper 
 const handleApiRoute = async (req: NextRequest, handler: () => Promise<Response>) => {
   try {
     return await handler();
@@ -22,21 +39,58 @@ const handleApiRoute = async (req: NextRequest, handler: () => Promise<Response>
   }
 };
 
-// Helper to fetch transaction and check ownership
-// Ensures Transaction type is returned which includes userId
-async function getTransactionAndVerifyOwnership(transactionId: number, currentUserId: string): Promise<Transaction> {
-    const transaction = await TransactionService.getTransactionById(transactionId);
-    if (!transaction) {
-        console.log(`API /transactions/${transactionId} - Transaction not found for ownership check.`);
-        throw new ApiError("Transaction not found", 404);
-    }
-    if (transaction.userId !== currentUserId) {
-        console.warn(`API /transactions/${transactionId} - Forbidden access attempt by user ${currentUserId}. Transaction owned by ${transaction.userId}`);
-        throw new ApiError("Forbidden. You do not have permission to access this transaction.", 403);
-    }
-    return transaction; // transaction here is of type Transaction | null, but we've checked null
+// Helper to fetch transaction and check ownership 
+async function getTransactionAndVerifyOwnership(
+  transactionId: number,
+  currentUser: CurrentUser 
+): Promise<TransactionWithDetails> {
+  const transaction = await TransactionService.getTransactionById(transactionId);
+
+  if (!transaction) {
+    console.log(`API /transactions/${transactionId} - Transaction not found for ownership check.`);
+    throw new ApiError("Transaction not found", 404);
+  }
+
+  if (currentUser.isAdmin) {
+    console.log(`API /transactions/${transactionId} - Admin access granted for user ${currentUser.id}.`);
+    return transaction;
+  }
+
+  if (transaction.userId === currentUser.id) {
+    console.log(`API /transactions/${transactionId} - Buyer access granted for user ${currentUser.id}.`);
+    return transaction;
+  }
+
+  if (
+    transaction.event &&
+    currentUser.role === UserRole.organizer &&
+    transaction.event.organizerId === currentUser.id
+  ) {
+    console.log(`API /transactions/${transactionId} - Organizer access granted for user ${currentUser.id}. Event organizer: ${transaction.event.organizerId}`);
+    return transaction;
+  }
+
+  console.warn(
+    `API /transactions/${transactionId} - Forbidden access attempt by user ${currentUser.id} (Role: ${currentUser.role}). Transaction owned by (buyer) ${transaction.userId}, Event organized by ${transaction.event?.organizerId || 'N/A'}`
+  );
+  throw new ApiError(
+    "Forbidden. You do not have permission to access this transaction.",
+    403
+  );
 }
 
+// Helper to get and validate current user from session
+async function getCurrentUserFromSession(): Promise<CurrentUser> {
+  const session = await auth();
+  if (!session?.user?.id || !session?.user?.role) {
+    throw new ApiError("Unauthorized. User ID or role missing in session.", 401);
+  }
+  return {
+    id: session.user.id,
+    role: session.user.role as UserRole, // Cast if necessary, ensure it's UserRole type in session
+    isAdmin: session.user.isAdmin || false, // Default isAdmin to false if not present
+  };
+}
 
 // --- GET Handler ---
 export async function GET(
@@ -46,22 +100,17 @@ export async function GET(
   const transactionIdStr = params.id;
 
   return handleApiRoute(req, async () => {
-    const session = await auth();
-    if (!session?.user?.id) {
-      throw new ApiError("Unauthorized. Please sign in.", 401);
-    }
-    const currentUserId = session.user.id;
+    const currentUser = await getCurrentUserFromSession();
 
     const id = parseInt(transactionIdStr);
     if (isNaN(id)) {
       throw new ApiError("Invalid transaction ID format", 400);
     }
 
-    console.log(`GET /api/transactions/${id} - Attempting to fetch for user ${currentUserId}`);
-    // getTransactionAndVerifyOwnership will fetch and check ownership
-    const transaction = await getTransactionAndVerifyOwnership(id, currentUserId);
+    console.log(`GET /api/transactions/${id} - Attempting to fetch for user ${currentUser.id} (Role: ${currentUser.role})`);
+    const transaction = await getTransactionAndVerifyOwnership(id, currentUser);
 
-    console.log(`GET /api/transactions/${id} - Successfully fetched for user ${currentUserId}:`, transaction.status, transaction.paymentDeadline);
+    console.log(`GET /api/transactions/${id} - Successfully fetched for user ${currentUser.id}: Status ${transaction.status}, Deadline ${transaction.paymentDeadline}`);
     return NextResponse.json(transaction, { status: 200 });
   });
 }
@@ -74,20 +123,16 @@ export async function PUT(
   const transactionIdStr = params.id;
 
   return handleApiRoute(req, async () => {
-    const session = await auth();
-    if (!session?.user?.id) {
-      throw new ApiError("Unauthorized. Please sign in.", 401);
-    }
-    const currentUserId = session.user.id;
-
+    const currentUser = await getCurrentUserFromSession();
     const data = await req.json();
+
     const id = parseInt(transactionIdStr);
     if (isNaN(id)) {
       throw new ApiError("Invalid transaction ID format", 400);
     }
 
     // Fetch and verify ownership BEFORE proceeding with the update
-    await getTransactionAndVerifyOwnership(id, currentUserId);
+    await getTransactionAndVerifyOwnership(id, currentUser);
 
     if (data.status && !isValidStatus(data.status)) {
       throw new ApiError("Invalid transaction status provided", 400);
@@ -98,11 +143,11 @@ export async function PUT(
     if (data.ticketUrl) updateData.ticketUrl = data.ticketUrl;
     if (data.voucherUrl) updateData.voucherUrl = data.voucherUrl;
 
-    if(!data.status) {
+    if (!data.status) { 
         throw new ApiError("Status is required for PUT operation", 400);
     }
 
-    console.log(`PUT /api/transactions/${id} - User ${currentUserId} updating status to ${data.status} with data:`, updateData);
+    console.log(`PUT /api/transactions/${id} - User ${currentUser.id} (Role: ${currentUser.role}) updating status to ${data.status} with data:`, updateData);
     const updatedTransaction = await TransactionService.updateTransactionStatus(
       id,
       data.status as TransactionStatus,
@@ -113,7 +158,7 @@ export async function PUT(
   });
 }
 
-// --- PATCH Handler  ---
+// --- PATCH Handler ---
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -121,20 +166,15 @@ export async function PATCH(
   const transactionIdStr = params.id;
 
   return handleApiRoute(req, async () => {
-    const session = await auth();
-    if (!session?.user?.id) {
-      throw new ApiError("Unauthorized. Please sign in.", 401);
-    }
-    const currentUserId = session.user.id;
-
+    const currentUser = await getCurrentUserFromSession();
     const data = await req.json();
+
     const id = parseInt(transactionIdStr);
     if (isNaN(id)) {
       throw new ApiError("Invalid transaction ID format", 400);
     }
 
-    // Fetch and verify ownership BEFORE proceeding with the patch
-    const existingTransaction = await getTransactionAndVerifyOwnership(id, currentUserId);
+    const existingTransaction = await getTransactionAndVerifyOwnership(id, currentUser);
 
     if (data.status && !isValidStatus(data.status)) {
         throw new ApiError("Invalid transaction status provided", 400);
@@ -156,11 +196,10 @@ export async function PATCH(
     }
     const statusToUpdate = newStatus;
 
-
-    console.log(`PATCH /api/transactions/${id} - User ${currentUserId} patching status to ${statusToUpdate} with data:`, updateData);
+    console.log(`PATCH /api/transactions/${id} - User ${currentUser.id} (Role: ${currentUser.role}) patching status to ${statusToUpdate} with data:`, updateData);
     const updatedTransaction = await TransactionService.updateTransactionStatus(
         id,
-        statusToUpdate, // statusToUpdate is now guaranteed TransactionStatus
+        statusToUpdate,
         updateData
     );
 
@@ -168,7 +207,7 @@ export async function PATCH(
   });
 }
 
-// --- POST Handler - endpoint to resend tickets
+// --- POST Handler - endpoint to resend tickets ---
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -176,29 +215,23 @@ export async function POST(
   const transactionIdStr = params.id;
 
   return handleApiRoute(req, async () => {
-    const session = await auth();
-    if (!session?.user?.id) {
-      throw new ApiError("Unauthorized. Please sign in.", 401);
-    }
-    const currentUserId = session.user.id;
+    const currentUser = await getCurrentUserFromSession();
+    const data = await req.json();
+    const { action } = data;
 
     const id = parseInt(transactionIdStr);
     if (isNaN(id)) {
       throw new ApiError("Invalid transaction ID format", 400);
     }
 
-    const data = await req.json();
-    const { action } = data;
-
-    // Fetch and verify ownership BEFORE resending tickets
-    const transaction = await getTransactionAndVerifyOwnership(id, currentUserId);
+    const transaction = await getTransactionAndVerifyOwnership(id, currentUser);
 
     if (action === 'resend_tickets') {
-      // TODO: Add further checks like if transaction.status === 'PAID'
-      if (transaction.status !== 'PAID') {
+      if (transaction.status !== TransactionStatus.PAID) { // Use enum for status check
           throw new ApiError("Cannot resend tickets for transactions not in PAID status.", 400);
       }
-      console.log(`POST /api/transactions/${id} - User ${currentUserId} resending tickets`);
+
+      console.log(`POST /api/transactions/${id} - User ${currentUser.id} (Role: ${currentUser.role}) resending tickets`);
       await TransactionService.resendTickets(id);
       return NextResponse.json({ success: true, message: "Ticket resend request processed." }, { status: 200 });
     }
