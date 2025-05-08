@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { auth } from '@/auth'; // Corrected: Use auth from Auth.js v5
+import { PrismaClient, UserRole } from '@prisma/client';
+import { auth } from '@/auth'; 
 
 const prisma = new PrismaClient();
 
-export async function PATCH(req: NextRequest, { params }: { params: { userId: string } }) {
-  const session = await auth(); // Corrected
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await auth(); 
 
   // @ts-ignore
   if (!session?.user?.isAdmin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  const { userId } = params;
+  const { id: userId } = params;
 
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });

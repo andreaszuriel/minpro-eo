@@ -49,7 +49,7 @@ export default function Footer() {
               <h3 className="font-medium text-secondary-300 mb-3">Quick Links</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="/explore" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
+                  <a href="/events" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
                     Explore Events
                   </a>
                 </li>
@@ -74,7 +74,7 @@ export default function Footer() {
                   </a>
                 </li>
                 <li>
-                  <a href="/contact" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
+                  <a href="/about" className="text-primary-100 hover:text-secondary-300 transition-colors duration-200">
                     Contact
                   </a>
                 </li>

@@ -4,7 +4,7 @@ import { auth } from '@/auth';
 
 const prisma = new PrismaClient();
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) { // Changed userId to id here
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) { 
   const session = await auth();
 
   // @ts-ignore
