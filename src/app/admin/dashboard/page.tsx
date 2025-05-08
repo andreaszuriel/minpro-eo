@@ -354,9 +354,11 @@ export default function AdminDashboard() {
              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-8">
                <h3 className="text-gray-800 font-medium text-lg mb-4">Quick Actions</h3>
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                 <QuickActionButton icon={Calendar} label="Manage Events" onClick={() => {}} />
-                 <QuickActionButton icon={Users} label="Add New Organizer" onClick={() => {}} color="secondary" />
+                 <QuickActionButton icon={Calendar} label="Manage Events" onClick={() =>  setActiveTab("events")}  color="primary" />
+                 <QuickActionButton icon={Users} label="Manage Organizer" onClick={() => setActiveTab("organizers")}  color="secondary" />
                  <QuickActionButton icon={Globe} label="Manage Countries" onClick={() => setActiveTab("countries")} color="tertiary" />
+                 <QuickActionButton icon={Music} label="Manage Genre" onClick={() => setActiveTab("genres")} color="primary" />
+                 <QuickActionButton icon={User} label="Manage User" onClick={() => setActiveTab("users")} color="secondary" />
                </div>
              </div>
           )}

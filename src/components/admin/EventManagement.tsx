@@ -234,7 +234,7 @@ export default function EventManagement() {
 
       {/* Featured Events Counter */}
       <Card className="bg-white border border-gray-200 shadow-sm">
-        <CardHeader className="pb-3 bg-gradient-to-r from-primary-600 to-primary-800 rounded-t-lg border-b border-gray-200">
+        <CardHeader className="pb-3 bg-primary-600 rounded-t-lg border-b border-gray-200">
           <div className="flex items-center space-x-2 pt-4">
             <Star className="h-5 w-5 text-white" fill="currentColor" />
             <CardTitle className="text-xl text-white">Featured Events Selection</CardTitle>

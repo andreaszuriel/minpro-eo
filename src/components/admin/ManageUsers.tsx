@@ -404,7 +404,7 @@ const UserManagement: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Total Users Card */}
         <Card className="bg-white border border-gray-200 shadow-sm">
-          <CardHeader className="pb-3 bg-gradient-to-r from-primary-600 to-primary-800 rounded-t-lg border-b border-gray-200">
+          <CardHeader className="pb-3 bg-primary-600 rounded-t-lg border-b border-gray-200">
             <div className="flex items-center space-x-2 pt-2 sm:pt-4">
               <Users className="h-5 w-5 text-white" />
               <CardTitle className="text-lg sm:text-xl text-white">Total Users</CardTitle>
@@ -420,7 +420,7 @@ const UserManagement: React.FC = () => {
         </Card>
         
         <Card className="bg-white border border-gray-200 shadow-sm">
-          <CardHeader className="pb-3 bg-gradient-to-r from-tertiary-600 to-tertiary-800 rounded-t-lg border-b border-gray-200">
+          <CardHeader className="pb-3 bg-tertiary-600 rounded-t-lg border-b border-gray-200">
             <div className="flex items-center space-x-2 pt-2 sm:pt-4">
               <CheckCircle className="h-5 w-5 text-white" />
               <CardTitle className="text-lg sm:text-xl text-white">Active Users</CardTitle>
@@ -444,7 +444,7 @@ const UserManagement: React.FC = () => {
         </Card>
         
         <Card className="bg-white border border-gray-200 shadow-sm">
-          <CardHeader className="pb-3 bg-gradient-to-r from-primary-600 to-tertiary-600 rounded-t-lg border-b border-gray-200">
+          <CardHeader className="pb-3 bg-secondary-600 rounded-t-lg border-b border-gray-200">
             <div className="flex items-center space-x-2 pt-2 sm:pt-4">
               <ShieldCheck className="h-5 w-5 text-white" />
               <CardTitle className="text-lg sm:text-xl text-white">Verified Users</CardTitle>
