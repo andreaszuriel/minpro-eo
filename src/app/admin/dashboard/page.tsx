@@ -26,6 +26,7 @@ import OrganizerManagement from "@/components/admin/ManageOrganizers";
 import GenreManagement from "@/components/admin/ManageGenres";
 import CountryManagement from "@/components/admin/ManageCountries";
 import EventManagement from "@/components/admin/EventManagement"; 
+import UserManagement from "@/components/admin/ManageUsers";
 
 
 
@@ -353,9 +354,9 @@ export default function AdminDashboard() {
              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-8">
                <h3 className="text-gray-800 font-medium text-lg mb-4">Quick Actions</h3>
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                 <QuickActionButton icon={Calendar} label="Create New Event" onClick={() => {}} />
+                 <QuickActionButton icon={Calendar} label="Manage Events" onClick={() => {}} />
                  <QuickActionButton icon={Users} label="Add New Organizer" onClick={() => {}} color="secondary" />
-                 <QuickActionButton icon={Globe} label="Manage Countries" onClick={() => setActiveTab("countries")} color="emerald" />
+                 <QuickActionButton icon={Globe} label="Manage Countries" onClick={() => setActiveTab("countries")} color="tertiary" />
                </div>
              </div>
           )}
@@ -366,28 +367,7 @@ export default function AdminDashboard() {
           {activeTab === "genres" && <GenreManagement />}
           {activeTab === "countries" && <CountryManagement />}
           {activeTab === "events" && <EventManagement />}
-
-          {/* Placeholder for User Management tab */}
-          {activeTab === "users" && (
-            <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm text-center">
-              {/* ... (Placeholder content for Users) ... */}
-               <div className="bg-gray-50 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                   <User className="h-8 w-8 text-gray-500" />
-               </div>
-               <h3 className="text-xl font-medium text-gray-800 mb-2">
-                 User Management
-               </h3>
-               <p className="text-gray-600 mb-6">
-                 This component is currently under development. Check back soon!
-               </p>
-               <Button
-                 onClick={() => setActiveTab("overview")}
-                 variant="outline"
-               >
-                 Return to Dashboard
-               </Button>
-            </div>
-          )}
+          {activeTab === "users" && <UserManagement />}
 
           {/* Footer */}
            <div className="mt-auto pt-8">

@@ -29,6 +29,7 @@ model User {
   role              UserRole            @default(customer)
   isAdmin           Boolean             @default(false)
   emailVerified     DateTime?
+  isActive          Boolean             @default(true)
   image             String?
   referralCode      String?             @unique
 
