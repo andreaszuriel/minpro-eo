@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TicketService } from '@/services/ticket.service';
 import { ApiError } from '@/lib/utils';
 import { auth } from '@/auth';
-// Import only jsPDF
 import { jsPDF } from 'jspdf';
 import path from 'path';
 import fs from 'fs';
@@ -131,11 +130,7 @@ export async function GET(
     doc.setFont(customFontLoaded ? 'Figtree' : 'Helvetica', 'bold');
     doc.setTextColor(PRIMARY_COLOR);
     doc.setFontSize(90);
-    // TEMPORARILY COMMENTED OUT to debug t.equals error
-    // doc.setGState({ opacity: 0.08 }); 
     doc.text('ADMIT ONE', pageWidth / 2, pageHeight / 2 + 30, { align: 'center', baseline: 'middle' });
-    // TEMPORARILY COMMENTED OUT
-    // doc.setGState({ opacity: 1.0 });
 
     currentY = pageMargin + 30;
     const headerHeight = 80;
