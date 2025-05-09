@@ -116,6 +116,7 @@ export async function middleware(request: NextRequest) {
     "/auth/forgot-password",
     "/about",
     "/terms",
+    "/not-found",
     "/auth/reset-password" 
   ];
   
