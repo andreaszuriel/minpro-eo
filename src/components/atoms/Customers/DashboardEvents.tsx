@@ -618,12 +618,12 @@ function CustomerEventList({ userId }: CustomerEventListProps) {
       {/* Review Dialog */}
       {currentReview && (
         <AlertDialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-          <AlertDialogContent className="max-w-md">
+          <AlertDialogContent className="max-w-md bg-white">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-xl font-bold text-primary-800">
                 {currentReview.isEdit ? 'Edit Your Review' : 'Share Your Experience'}
               </AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogDescription className="text-black">
                 {currentReview.isEdit
                   ? 'Update your rating and review for this event.'
                   : 'How would you rate your experience at this event?'}
