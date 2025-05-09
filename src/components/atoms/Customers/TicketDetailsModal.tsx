@@ -53,7 +53,7 @@ function TicketDetailsModal({
   // Check if we have e-tickets available (paid status)
   const hasETickets = transaction.status === 'PAID' && transaction.tickets && transaction.tickets.length > 0;
   
-  const TAX_RATE = 0.11;
+  const TAX_RATE = 0.1;
   const router = useRouter();
 
   // Format date for display
@@ -82,18 +82,25 @@ function TicketDetailsModal({
 
     // --- Financial Calculations ---
     let promotionDisplayAmount = 0;
-    let promotionCodeDisplay = ''; // For display
-    if (transaction.promotion && transaction.promotion.discount > 0) {
-        promotionCodeDisplay = transaction.promotion.code;
-        if (transaction.promotion.discountType === 'PERCENTAGE') {
-            promotionDisplayAmount = (transaction.basePrice * transaction.promotion.discount) / 100;
-        } else { // FIXED_AMOUNT
-            promotionDisplayAmount = transaction.promotion.discount;
-        }
+  let promotionCodeDisplay = '';
+  if (transaction.promotion && transaction.promotion.discount > 0) {
+    promotionCodeDisplay = transaction.promotion.code;
+    if (transaction.promotion.discountType === 'PERCENTAGE') {
+      promotionDisplayAmount = (transaction.basePrice * transaction.promotion.discount) / 100;
+    } else { // FIXED_AMOUNT
+      promotionDisplayAmount = transaction.promotion.discount;
     }
+  }
     
-    const subtotalAfterDiscounts = transaction.basePrice - transaction.couponDiscount - promotionDisplayAmount;
-    const taxAmount = subtotalAfterDiscounts > 0 ? subtotalAfterDiscounts * TAX_RATE : 0;
+  const subtotalAfterDiscountsAndPoints = Math.max(0, 
+    transaction.basePrice 
+    - (transaction.couponDiscount || 0) 
+    - promotionDisplayAmount 
+    - (transaction.pointsUsed || 0) 
+  );
+
+  const taxAmount = subtotalAfterDiscountsAndPoints > 0 ? subtotalAfterDiscountsAndPoints * TAX_RATE : 0;
+  const displayedFinalPrice = subtotalAfterDiscountsAndPoints + taxAmount;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -266,13 +273,14 @@ function TicketDetailsModal({
                         </div>
                       )}
 
-                      {(transaction.couponDiscount > 0 || promotionDisplayAmount > 0) && (
+{(transaction.couponDiscount > 0 || promotionDisplayAmount > 0) && (
                         <div className="flex justify-between items-center py-1.5 border-t border-gray-200/60 mt-1.5 pt-1.5">
-                            <span className="text-gray-700">Subtotal</span>
-                            <span className="font-medium text-gray-800">{formatCurrency(subtotalAfterDiscounts)}</span>
+                            <span className="text-gray-700">Subtotal (after coupon/promo)</span>
+                            <span className="font-medium text-gray-800">{formatCurrency(transaction.basePrice - (transaction.couponDiscount || 0) - promotionDisplayAmount)}</span>
                         </div>
                       )}
                       
+                    
                       {taxAmount > 0 && (
                          <div className="flex justify-between items-center py-1.5">
                             <span className="text-gray-600 flex items-center"><Percent className="w-3.5 h-3.5 mr-1"/>Tax ({(TAX_RATE * 100).toFixed(0)}%)</span>
@@ -282,7 +290,7 @@ function TicketDetailsModal({
                       
                       <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between items-center py-1.5">
                         <span className="text-gray-800 font-semibold">Total Amount</span>
-                        <span className="font-bold text-lg text-primary-700">{formatCurrency(transaction.finalPrice)}</span>
+                        <span className="font-bold text-lg text-primary-700">{formatCurrency(displayedFinalPrice)}</span>
                       </div>
                     </div>
                   </div>

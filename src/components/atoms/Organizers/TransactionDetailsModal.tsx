@@ -24,7 +24,7 @@ interface TransactionDetailsModalProps {
   onTransactionUpdate?: (id: number, status: TransactionStatus) => void;
 }
 
-const TAX_RATE = 0.11; // 11%
+const TAX_RATE = 0.1; // 11%
 
 const TransactionDetailsModal = ({
   isOpen,
@@ -63,7 +63,7 @@ const TransactionDetailsModal = ({
         throw new Error(errorData.error || 'Failed to update status');
       }
       
-      // Success toast notification - using your design system colors
+      // Success toast notification 
       toast.success(`Status Updated`, {
         description: `Transaction #${id} status updated to ${formatStatus(status)}.`,
         duration: 4000,
@@ -91,8 +91,6 @@ const TransactionDetailsModal = ({
     }
   };
 
-// Inside TransactionModal.tsx
-
 const resendTicket = async (id: number) => {
   setLoadingAction({ id, type: 'resend' });
   
@@ -105,7 +103,7 @@ const resendTicket = async (id: number) => {
     
     if (!res.ok) {
       const errorData = await res.json();
-      // Use the message from the backend if available
+      // Use the message from the backend 
       throw new Error(errorData.message || errorData.error || 'Failed to resend ticket'); 
     }
     
@@ -117,11 +115,6 @@ const resendTicket = async (id: number) => {
       duration: 4000,
       icon: <Ticket className="h-5 w-5" />,
     });
-    
-    // No need to call onTransactionUpdate here unless resending changes status (it shouldn't)
-    // if (res.ok && onTransactionUpdate) {
-    //   onTransactionUpdate(id, transaction.status); 
-    // }
 
     setTimeout(() => onClose(), 800); 
   } catch (error) {
@@ -138,23 +131,35 @@ const resendTicket = async (id: number) => {
 };
 
   // --- Financial Calculations ---
-  let promotionDisplayAmount = 0;
+  // 1. Calculate Promotion Discount Amount (if any)
+  let promotionActualDiscount = 0;
   let promotionCodeDisplay = '';
   if (transaction.promotion && transaction.promotion.discount > 0) {
-    promotionCodeDisplay = transaction.promotion.code;
-    if (transaction.promotion.discountType === 'PERCENTAGE') {
-      // Apply percentage to base price. Adjust if business logic differs (e.g., after coupon).
-      promotionDisplayAmount = (transaction.basePrice * transaction.promotion.discount) / 100;
-    } else { // FIXED_AMOUNT
-      promotionDisplayAmount = transaction.promotion.discount;
-    }
+      promotionCodeDisplay = transaction.promotion.code;
+      if (transaction.promotion.discountType === 'PERCENTAGE') {
+          promotionActualDiscount = (transaction.basePrice * transaction.promotion.discount) / 100;
+      } else { // FIXED_AMOUNT
+          promotionActualDiscount = transaction.promotion.discount;
+      }
+       promotionActualDiscount = Math.min(promotionActualDiscount, transaction.basePrice - (transaction.couponDiscount || 0) ); // Cap promo
   }
 
-  // Subtotal after coupon and promotion discounts
-  const subtotalAfterDiscounts = transaction.basePrice - transaction.couponDiscount - promotionDisplayAmount;
+  // 2. Determine the actual coupon discount used
+  const couponActualDiscount = transaction.couponDiscount || 0;
 
+  // 3. Determine subtotal for tax calculation 
+  const subtotalForTaxCalculation = transaction.finalPrice; 
 
-  const taxAmount = subtotalAfterDiscounts > 0 ? subtotalAfterDiscounts * TAX_RATE : 0;
+  // 4. Calculate Tax Amount
+  const taxAmount = subtotalForTaxCalculation > 0 ? subtotalForTaxCalculation * TAX_RATE : 0;
+
+  // 5. Calculate the Displayed Final Price
+  const displayedFinalPrice = subtotalForTaxCalculation + taxAmount;
+
+  // --- For Displaying Intermediate Subtotal (Optional) ---
+  const subtotalAfterCouponAndPromo = Math.max(0,
+    transaction.basePrice - couponActualDiscount - promotionActualDiscount
+  );
 
   if (!isOpen) return null;
 
@@ -257,35 +262,22 @@ const resendTicket = async (id: number) => {
                 {/* Financial Information */}
                 <div className="space-y-1 text-sm">
         <div className="flex items-center">
-        <span className="w-32 text-gray-600">Base Price:</span> {/* Increased width */}
+        <span className="w-32 text-gray-600">Base Price:</span> 
         <span className="font-medium text-gray-800">{formatCurrency(transaction.basePrice, 'IDR')}</span>
         </div>
         
-        {transaction.couponDiscount > 0 && (
-            <div className="flex items-center">
-            <span className="w-32 text-gray-600 flex items-center"><Tag className="w-3 h-3 mr-1 text-green-500"/>Coupon Discount:</span>
-            <span className="font-medium text-green-600">-{formatCurrency(transaction.couponDiscount, 'IDR')}</span>
-            </div>
-        )}
-        
-        {promotionDisplayAmount > 0 && (
+              {/* Promotion Display: */}
+              {promotionActualDiscount > 0 && (
             <div className="flex items-center">
             <span className="w-32 text-gray-600 flex items-center"><Tag className="w-3 h-3 mr-1 text-blue-500"/>Promotion ({promotionCodeDisplay}):</span>
-            <span className="font-medium text-blue-600">-{formatCurrency(promotionDisplayAmount, 'IDR')}</span>
+            <span className="font-medium text-blue-600">-{formatCurrency(promotionActualDiscount, 'IDR')}</span>
             </div>
         )}
         
-        {transaction.pointsUsed > 0 && (
-            <div className="flex items-center">
-            <span className="w-32 text-gray-600">Points Used:</span>
-            <span className="font-medium text-gray-800">{transaction.pointsUsed} pts</span>
-            </div>
-        )}
-        
-        {(transaction.couponDiscount > 0 || promotionDisplayAmount > 0) && (
+         {(transaction.couponDiscount > 0 || promotionActualDiscount > 0) && (
             <div className="flex items-center pt-1 border-t border-gray-200/60 mt-1">
             <span className="w-32 text-gray-700">Subtotal:</span>
-            <span className="font-medium text-gray-800">{formatCurrency(subtotalAfterDiscounts, 'IDR')}</span>
+            <span className="font-medium text-gray-800">{formatCurrency(transaction.basePrice - couponActualDiscount - promotionActualDiscount, 'IDR')}</span>
             </div>
         )}
         
@@ -298,7 +290,7 @@ const resendTicket = async (id: number) => {
         
         <div className="flex items-center pt-2 border-t border-gray-200 mt-2">
         <span className="w-32 text-gray-700 font-semibold">Final Price:</span>
-        <span className="font-bold text-gray-900 text-base">{formatCurrency(transaction.finalPrice, 'IDR')}</span>
+        <span className="font-bold text-gray-900 text-base">{formatCurrency(displayedFinalPrice, 'IDR')}</span>
                   </div>
                 </div>
               </div>
